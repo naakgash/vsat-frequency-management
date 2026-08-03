@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load rf %}
+{% block title %}Frequency Windows &middot; Inventory{% endblock %}
+{% block content %}
+{% include "inventory/_list_header.html" with title="Frequency Windows" add_label="Frequency Window" blurb="Allocatable spectrum on one leg of one satellite. Band limits are informative; a Window is what actually grants permission to allocate (section 13.2)." %}
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <p class="small text-body-secondary mb-0">
+    {% if showing_all_versions %}
+      Showing every version. Superseded rows are shown in muted text.
+    {% else %}
+      Showing the version in force for each Window.
+    {% endif %}
+  </p>
+  {% if showing_all_versions %}
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'inventory:frequency-window-list' %}">Current versions only</a>
+  {% else %}
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'inventory:frequency-window-list' %}?versions=all">Show all versions</a>
+  {% endif %}
+</div>
+
+<div class="table-responsive"><table class="table table-hover align-middle">
+  <caption class="visually-hidden">Frequency windows</caption>
+  <thead><tr>
+    <th scope="col">Code</th><th scope="col">Satellite</th><th scope="col">Band</th>
+    <th scope="col">Side</th><th scope="col">Polarization</th>
+    <th scope="col" class="text-end rf-value">Start</th>
+    <th scope="col" class="text-end rf-value">End</th>
+    <th scope="col" class="text-end rf-value">Width</th>
+    <th scope="col" class="text-end">Version</th>
+    <th scope="col">Status</th>
+  </tr></thead>
+  <tbody>
+    {% for object in objects %}
+      <tr{% if object.effective_until %} class="text-body-secondary"{% endif %}>
+        <th scope="row" class="fw-normal"><a href="{{ object.get_absolute_url }}">{{ object.code }}</a></th>
+        <td>{{ object.satellite.code }}</td>
+        <td>{{ object.band.code }}</td>
+        <td>{{ object.get_side_display }}</td>
+        <td>{{ object.polarization }}</td>
+        <td class="text-end rf-value">{{ object.rf_start_hz|mhz }}</td>
+        <td class="text-end rf-value">{{ object.rf_end_hz|mhz }}</td>
+        <td class="text-end rf-value">{{ object.width_hz|mhz }}</td>
+        <td class="text-end">
+          {{ object.version_number }}{% if object.effective_until %} <span class="badge text-bg-light border">Superseded</span>{% endif %}
+        </td>
+        <td>{% include "inventory/_status_badge.html" %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="10" class="text-center text-body-secondary py-4">
+        No frequency windows yet. Window edges are OQ-01 and are supplied by RF engineering,
+        not shipped with the product.
+      </td></tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+<p class="small text-body-secondary">
+  Frequencies are shown in MHz and stored as integer Hz. Every range is half-open:
+  <code>[start, end)</code>, so the end edge belongs to the next window, not this one.
+</p>
+{% endblock %}

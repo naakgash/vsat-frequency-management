@@ -1,0 +1,67 @@
+{% comment %}
+Version state for a master-data record. Specification section 13.6.
+
+The first thing to establish on one of these screens is *which* definition you are
+reading. Reading a superseded window's frequencies as though they were current is
+precisely the mistake versioning exists to prevent, so a superseded version says so
+loudly and links to the one that replaced it.
+{% endcomment %}
+<div class="card{% if is_superseded %} border-warning{% endif %}">
+  <div class="card-body">
+    <h2 class="h6 card-title text-uppercase text-body-secondary">Version</h2>
+
+    <p class="mb-2">
+      <span class="badge {% if is_superseded %}text-bg-warning{% else %}text-bg-primary{% endif %} fs-6">
+        Version {{ object.version_number }}
+      </span>
+      {% if is_superseded %}
+        <span class="ms-1">Superseded</span>
+      {% else %}
+        <span class="ms-1">In force</span>
+      {% endif %}
+    </p>
+
+    <dl class="row small mb-2">
+      <dt class="col-5">Effective from</dt>
+      <dd class="col-7">{{ object.effective_from|date:"Y-m-d H:i" }}</dd>
+      <dt class="col-5">Effective until</dt>
+      <dd class="col-7">
+        {% if object.effective_until %}
+          {{ object.effective_until|date:"Y-m-d H:i" }}
+        {% else %}
+          <span class="text-body-secondary">Open-ended</span>
+        {% endif %}
+      </dd>
+      <dt class="col-5">Versions</dt>
+      <dd class="col-7">{{ version_count }}</dd>
+    </dl>
+
+    {% if is_superseded and current_version %}
+      <p class="small mb-2">
+        Replaced by
+        <a href="{{ current_version.get_absolute_url }}">version {{ current_version.version_number }}</a>.
+      </p>
+    {% endif %}
+
+    {% if frozen_by %}
+      {% comment %}
+      Naming what freezes the record matters more than saying it is frozen: the operator
+      needs to know what would be invalidated, not merely that something would be.
+      {% endcomment %}
+      <p class="small mb-2 text-body-secondary">
+        Engineering values are fixed while
+        {% for dependency in frozen_by %}{{ dependency.summary }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        reference this version. Descriptions and references may still be corrected.
+      </p>
+    {% endif %}
+
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary"
+         href="{% url 'inventory:versions' entity=entity pk=object.pk %}">History</a>
+      {% if can_manage and not is_superseded %}
+        <a class="btn btn-sm btn-outline-primary"
+           href="{% url 'inventory:supersede' entity=entity pk=object.pk %}">New version</a>
+      {% endif %}
+    </div>
+  </div>
+</div>

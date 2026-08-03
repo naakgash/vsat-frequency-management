@@ -1,18 +1,15 @@
 """Independent inventory master data.
 
 Specification sections 3.1 and 13.1 to 13.5. These five entities can be created on their
-own; Frequency Windows, Payload Paths and Beams depend on them and arrive in later
-slices.
-
-All RF values are stored as **integer Hz** in ``BigIntegerField`` columns. This is not
-over-caution: a Ka-band uplink near 30 GHz is 3.0e10 Hz, which overflows a 32-bit signed
-integer, so ``bigint`` is required rather than merely preferable (ADR-0003).
+own; Frequency Windows and Payload Paths depend on them and live in ``dependent.py``.
 """
 
 from __future__ import annotations
 
 import uuid
 
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import RangeOperators
 from django.db import models
 
 from inventory.constants import (
@@ -22,66 +19,12 @@ from inventory.constants import (
     PolarizationType,
     Sideband,
 )
+from inventory.models.base import (
+    EffectiveDatedModel,
+    InventoryRecord,
+    MasterDataVersioned,
+)
 from inventory.scope import GatewayQuerySet, HubQuerySet
-
-
-class TimestampedModel(models.Model):
-    """Created/updated metadata required of every inventory record (section 13)."""
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(
-        "accounts.User",
-        null=True,
-        blank=True,
-        on_delete=models.PROTECT,
-        related_name="+",
-    )
-    updated_by = models.ForeignKey(
-        "accounts.User",
-        null=True,
-        blank=True,
-        on_delete=models.PROTECT,
-        related_name="+",
-    )
-    # Optimistic locking (section 15.5).
-    record_version = models.PositiveIntegerField(default=1)
-
-    class Meta:
-        abstract = True
-
-
-class DeactivatableModel(models.Model):
-    """Records that are retired by deactivation rather than deletion.
-
-    Specification section 20 forbids hard-deleting used inventory, so every entity here
-    carries the same flag. Declared once so the deactivation service can be typed against
-    it instead of against bare ``Model``.
-    """
-
-    is_active = models.BooleanField(default=True)
-
-    class Meta:
-        abstract = True
-
-
-class InventoryRecord(TimestampedModel, DeactivatableModel):
-    """Everything an inventory master-data record has in common."""
-
-    class Meta:
-        abstract = True
-
-
-class EffectiveDatedModel(models.Model):
-    """Half-open effective period ``[effective_from, effective_until)`` (A-10)."""
-
-    effective_from = models.DateTimeField()
-    effective_until = models.DateTimeField(
-        null=True, blank=True, help_text="Leave empty for an open-ended record."
-    )
-
-    class Meta:
-        abstract = True
 
 
 class Satellite(InventoryRecord, EffectiveDatedModel):
@@ -296,7 +239,7 @@ class Hub(InventoryRecord):
         return reverse("inventory:hub-detail", kwargs={"pk": self.pk})
 
 
-class EquipmentProfile(InventoryRecord, EffectiveDatedModel):
+class EquipmentProfile(InventoryRecord, MasterDataVersioned):
     """BUC, BDC or LNB conversion profile. Specification section 13.5.
 
     Carries the version columns of assumption A-16. The versioning *service* arrives in
@@ -342,16 +285,6 @@ class EquipmentProfile(InventoryRecord, EffectiveDatedModel):
 
     engineering_reference = models.TextField(blank=True)
     description = models.TextField(blank=True)
-
-    # --- Master-data versioning (A-16) --------------------------------------
-    version_group = models.UUIDField(
-        default=uuid.uuid4,
-        help_text="Shared by every version of the same logical profile.",
-    )
-    version_number = models.PositiveIntegerField(default=1)
-    supersedes = models.ForeignKey(
-        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="superseded_by"
-    )
 
     class Meta:
         db_table = "equipment_profile"
@@ -399,6 +332,16 @@ class EquipmentProfile(InventoryRecord, EffectiveDatedModel):
                     | models.Q(conversion_method=ConversionMethod.FIXED_OFFSET)
                 ),
                 name="ck_equipment_conversion_sideband",
+            ),
+            # Two versions of one profile active at once would give an allocation two
+            # different LO values with nothing to say which applies (A-16).
+            ExclusionConstraint(
+                name="excl_equipment_version_overlap",
+                expressions=[
+                    ("version_group", RangeOperators.EQUAL),
+                    ("effective_period", RangeOperators.OVERLAPS),
+                ],
+                condition=models.Q(is_active=True),
             ),
         ]
         indexes = [

@@ -19,25 +19,7 @@
   {% endfor %}
 
   <div class="card mb-4"><div class="card-body">
-    <div class="row g-3">
-      {% for field in form %}
-        {% if field.name != "expected_version" and field.name != "reason" %}
-          <div class="col-12 col-md-6">
-            {% if field.field.widget.input_type == "checkbox" %}
-              <div class="form-check mt-4">
-                {{ field }}
-                <label for="{{ field.id_for_label }}" class="form-check-label">{{ field.label }}</label>
-              </div>
-            {% else %}
-              <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-              {{ field }}
-            {% endif %}
-            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-          </div>
-        {% endif %}
-      {% endfor %}
-    </div>
+    {% include "inventory/_form_fields.html" %}
   </div></div>
 
   <div class="card"><div class="card-body">

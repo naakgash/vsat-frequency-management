@@ -11,6 +11,10 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        # btree_gist is what lets a GiST index mix uuid equality with range
+        # overlap. Without this dependency the graph may run inventory before the
+        # extension exists — which is exactly what happens on a fresh database.
+        ("operations", "0001_extensions"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

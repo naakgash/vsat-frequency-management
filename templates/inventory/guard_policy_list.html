@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load rf %}
+{% block title %}Guard Policies &middot; Inventory{% endblock %}
+{% block content %}
+{% include "inventory/_list_header.html" with title="Guard Policies" add_label="Guard Policy" blurb="Named separation rules a Frequency Window or Satnet defaults to. Guard values by Band, Window and platform are supplied by RF engineering (OQ-07); none are seeded." %}
+<div class="table-responsive"><table class="table table-hover align-middle">
+  <caption class="visually-hidden">Guard policies</caption>
+  <thead><tr>
+    <th scope="col">Code</th><th scope="col">Name</th><th scope="col">Mode</th>
+    <th scope="col" class="text-end rf-value">Fixed left</th>
+    <th scope="col" class="text-end rf-value">Fixed right</th>
+    <th scope="col" class="text-end">Percent left</th>
+    <th scope="col" class="text-end">Percent right</th>
+    <th scope="col" class="text-end">Windows</th>
+    <th scope="col">Status</th>
+  </tr></thead>
+  <tbody>
+    {% for object in objects %}
+      <tr>
+        <th scope="row" class="fw-normal"><a href="{{ object.get_absolute_url }}">{{ object.code }}</a></th>
+        <td>{{ object.name }}</td>
+        <td>{{ object.get_mode_display }}</td>
+        <td class="text-end rf-value">{{ object.fixed_left_hz|mhz }}</td>
+        <td class="text-end rf-value">{{ object.fixed_right_hz|mhz }}</td>
+        <td class="text-end">{{ object.percent_left|default_if_none:"—" }}</td>
+        <td class="text-end">{{ object.percent_right|default_if_none:"—" }}</td>
+        <td class="text-end">{{ object.window_count }}</td>
+        <td>{% include "inventory/_status_badge.html" %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="9" class="text-center text-body-secondary py-4">
+        No guard policies yet. Values are OQ-07 and are not shipped with the product.
+      </td></tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+<p class="small text-body-secondary">Fixed guard widths are shown in MHz; percentages are of the occupied bandwidth.</p>
+{% endblock %}

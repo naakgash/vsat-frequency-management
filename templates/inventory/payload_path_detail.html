@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load rf %}
+{% block title %}{{ object.code }} v{{ object.version_number }} &middot; Payload Paths{% endblock %}
+{% block content %}
+{% include "inventory/_detail_header.html" %}
+
+{% if is_superseded %}
+  <div class="alert alert-warning" role="alert">
+    This is version {{ object.version_number }}, superseded on
+    {{ object.effective_until|date:"Y-m-d H:i" }}.
+    {% if current_version %}
+      The version in force is
+      <a href="{{ current_version.get_absolute_url }}" class="alert-link">version {{ current_version.version_number }}</a>.
+    {% endif %}
+  </div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-12 col-lg-7">
+    <div class="card"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">Translation</h2>
+      <dl class="row mb-0">
+        <dt class="col-sm-5">Satellite</dt>
+        <dd class="col-sm-7"><a href="{{ object.satellite.get_absolute_url }}">{{ object.satellite.code }}</a></dd>
+        <dt class="col-sm-5">Direction</dt><dd class="col-sm-7">{{ object.get_direction_display }}</dd>
+        <dt class="col-sm-5">Uplink window</dt>
+        <dd class="col-sm-7">
+          <a href="{{ object.uplink_window.get_absolute_url }}">{{ object.uplink_window.code }}</a>
+          <span class="d-block small text-body-secondary">
+            {{ object.get_uplink_window_side_display }} ·
+            <span class="rf-value">{{ object.uplink_window.rf_start_hz|mhz }} – {{ object.uplink_window.rf_end_hz|mhz }} MHz</span>
+          </span>
+        </dd>
+        <dt class="col-sm-5">Downlink window</dt>
+        <dd class="col-sm-7">
+          <a href="{{ object.downlink_window.get_absolute_url }}">{{ object.downlink_window.code }}</a>
+          <span class="d-block small text-body-secondary">
+            {{ object.get_downlink_window_side_display }} ·
+            <span class="rf-value">{{ object.downlink_window.rf_start_hz|mhz }} – {{ object.downlink_window.rf_end_hz|mhz }} MHz</span>
+          </span>
+        </dd>
+        <dt class="col-sm-5">Method</dt>
+        <dd class="col-sm-7"><code>{{ object.get_translation_method_display }}</code></dd>
+        <dt class="col-sm-5">Constant</dt>
+        <dd class="col-sm-7 rf-value">{{ object.translation_constant_hz|mhz }} MHz</dd>
+        <dt class="col-sm-5">Inverting</dt>
+        <dd class="col-sm-7">{% if object.is_inverting %}Yes{% else %}No{% endif %}</dd>
+        <dt class="col-sm-5">Engineering reference</dt>
+        <dd class="col-sm-7">{{ object.engineering_reference|default:"—" }}</dd>
+        <dt class="col-sm-5">Description</dt>
+        <dd class="col-sm-7">{{ object.description|default:"—" }}</dd>
+      </dl>
+      <p class="small text-body-secondary mt-3 mb-0">
+        The side of each window is stored on this record as well as on the window, and a
+        composite foreign key holds the two together: the path cannot claim a side its
+        window does not have. That is what makes the direction rule enforceable rather
+        than merely conventional.
+      </p>
+    </div></div>
+
+    <div class="card mt-4"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">Polarization mappings</h2>
+      {% if object.polarization_mappings.all %}
+        <table class="table table-sm mb-0">
+          <caption class="visually-hidden">Permitted polarization pairs</caption>
+          <thead><tr><th scope="col">Uplink</th><th scope="col">Downlink</th></tr></thead>
+          <tbody>
+            {% for mapping in object.polarization_mappings.all %}
+              <tr>
+                <td>{{ mapping.get_uplink_polarization_display }}</td>
+                <td>{{ mapping.get_downlink_polarization_display }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="mb-0 small text-body-secondary">
+          None recorded. Which uplink/downlink polarization pairs a path permits is OQ-03;
+          no default is supplied, because a plausible one would be indistinguishable from a
+          confirmed one once loaded.
+        </p>
+      {% endif %}
+    </div></div>
+  </div>
+
+  <div class="col-12 col-lg-5">
+    {% include "inventory/_version_panel.html" %}
+    <div class="mt-4">{% include "inventory/_dependency_summary.html" %}</div>
+  </div>
+</div>
+{% endblock %}

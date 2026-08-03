@@ -1,0 +1,26 @@
+{% comment %}
+The body of an inventory form, shared by the edit and supersede screens.
+
+``reason`` and ``expected_version`` are deliberately skipped: the first is rendered
+separately alongside the submit button, and the second is a hidden field the surrounding
+form emits once.
+{% endcomment %}
+<div class="row g-3">
+  {% for field in form %}
+    {% if field.name != "expected_version" and field.name != "reason" %}
+      <div class="col-12 col-md-6">
+        {% if field.field.widget.input_type == "checkbox" %}
+          <div class="form-check mt-4">
+            {{ field }}
+            <label for="{{ field.id_for_label }}" class="form-check-label">{{ field.label }}</label>
+          </div>
+        {% else %}
+          <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+          {{ field }}
+        {% endif %}
+        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+        {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>

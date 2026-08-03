@@ -18,13 +18,7 @@
       </div>
       <ul class="list-group list-group-flush">
         {% for entry in independent %}
-          <li class="list-group-item d-flex justify-content-between align-items-start">
-            <span>
-              <a href="{% url entry.url_name %}" class="fw-semibold">{{ entry.label }}</a>
-              <span class="d-block small text-body-secondary">{{ entry.blurb }}</span>
-            </span>
-            <span class="badge text-bg-secondary rounded-pill">{{ entry.count }}</span>
-          </li>
+          {% include "inventory/_index_entry.html" %}
         {% endfor %}
       </ul>
     </section>
@@ -40,13 +34,7 @@
       </div>
       <ul class="list-group list-group-flush">
         {% for entry in dependent %}
-          <li class="list-group-item d-flex justify-content-between align-items-start">
-            <span>
-              <span class="fw-semibold text-body-secondary">{{ entry.label }}</span>
-              <span class="d-block small text-body-secondary">{{ entry.blurb }}</span>
-            </span>
-            <span class="badge text-bg-light border">Slice {{ entry.slice }}</span>
-          </li>
+          {% include "inventory/_index_entry.html" %}
         {% endfor %}
       </ul>
     </section>

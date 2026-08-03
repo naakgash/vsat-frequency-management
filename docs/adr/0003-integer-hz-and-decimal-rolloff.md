@@ -27,11 +27,26 @@ depending on the arithmetic path that produced them.
 30 GHz is 3.0 × 10¹⁰ Hz, and the 32-bit signed maximum is 2.147 × 10⁹. A 32-bit column
 would overflow on the first real Ka-band frequency anyone entered.
 
-**Entry and display.** Operators work in MHz. The conversion happens in exactly one
-place — `inventory.forms.MegahertzField` — in `Decimal`, and the corresponding display
-conversion happens in exactly one other place, the `{% spec_value %}` tag, using the
-precision from the Specification Dictionary. No template and no JavaScript converts a
-frequency.
+**Entry and display.** Operators work in MHz. The conversion is `Decimal` throughout and
+lives in `inventory.units`; nothing else multiplies or divides by 1,000,000. Three call
+sites use it, and no template or JavaScript converts a frequency:
+
+| Call site | Used for |
+| --- | --- |
+| `inventory.forms.MegahertzField` | entry — MHz in, integer Hz stored |
+| `inventory.templatetags.rf.mhz` | display of a known-Hz column |
+| `{% spec_value %}` (`specifications`) | display governed by the Specification Dictionary's declared unit and precision |
+
+The last one keeps its own copy of the arithmetic, deliberately. It converts according to
+a unit an administrator recorded rather than a unit the column guarantees, and
+`specifications` sits *below* `inventory` in the module layering, so it could not import
+`inventory.units` even if the two rules were identical. `tests/inventory/test_units.py`
+pins the two against each other.
+
+*(Amended in S5. Until then the display half lived only in `{% spec_value %}`, which was
+adequate while the only frequencies on screen were Band and Equipment Profile limits.
+Frequency Windows have edges with no dictionary entry — the dictionary describes Satnet
+Path values — so a second, column-driven display path was needed.)*
 
 **Sub-Hz input is refused, not rounded.** A value with more precision than 1 Hz raises a
 validation error. Silently truncating would reintroduce exactly the imprecision this

@@ -53,6 +53,8 @@ ignore = [
 # lists and dicts directly on Meta and on form classes, django-stubs types them without
 # ClassVar, and annotating them would be non-idiomatic without catching a real bug.
 "**/models.py" = ["RUF012"]
+# Same rule, for the app whose models outgrew a single module (inventory, in S5).
+"**/models/*.py" = ["RUF012"]
 "**/forms.py" = ["RUF012"]
 # Settings modules use star imports by design so each environment overrides a shared base.
 "config/settings/*" = ["E402", "F403", "F405"]

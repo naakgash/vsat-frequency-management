@@ -1,13 +1,14 @@
 {% extends "base.html" %}
+{% load rf %}
 {% block title %}Bands &middot; Inventory{% endblock %}
 {% block content %}
-{% include "inventory/_list_header.html" with title="Bands" entity="band" blurb="Frequency bands and their permitted polarizations. Band limits are informative; allocation permission comes from Frequency Windows." %}
+{% include "inventory/_list_header.html" with title="Bands" blurb="Frequency bands and their permitted polarizations. Band limits are informative; allocation permission comes from Frequency Windows." %}
 <div class="table-responsive"><table class="table table-hover align-middle">
   <caption class="visually-hidden">Bands</caption>
   <thead><tr>
     <th scope="col">Code</th><th scope="col">Name</th>
-    <th scope="col" class="text-end rf-value">RF minimum</th>
-    <th scope="col" class="text-end rf-value">RF maximum</th>
+    <th scope="col" class="text-end rf-value">RF minimum (MHz)</th>
+    <th scope="col" class="text-end rf-value">RF maximum (MHz)</th>
     <th scope="col">Polarizations</th><th scope="col" class="text-end">Profiles</th>
     <th scope="col">Status</th>
   </tr></thead>
@@ -16,8 +17,8 @@
       <tr>
         <th scope="row" class="fw-normal"><a href="{{ object.get_absolute_url }}">{{ object.code }}</a></th>
         <td>{{ object.name }}</td>
-        <td class="text-end rf-value">{{ object.rf_min_hz|floatformat:0 }}</td>
-        <td class="text-end rf-value">{{ object.rf_max_hz|floatformat:0 }}</td>
+        <td class="text-end rf-value">{{ object.rf_min_hz|mhz }}</td>
+        <td class="text-end rf-value">{{ object.rf_max_hz|mhz }}</td>
         <td>
           {% for polarization in object.allowed_polarizations.all %}
             <span class="badge text-bg-light border">{{ polarization.polarization }}</span>
