@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Access denied &middot; VSAT Spectrum Allocation Platform{% endblock %}
+{% block content %}
+<div class="row"><div class="col-12 col-lg-8">
+  <h1 class="h3">Access denied</h1>
+  <p>You do not have permission to view this page or perform this action.</p>
+  <p class="text-body-secondary">
+    If you believe you should have access, ask an administrator to review your role and
+    your Beam, Hub and Gateway authorization scope.
+  </p>
+  <a class="btn btn-secondary" href="{% url 'home' %}">Return to dashboard</a>
+</div></div>
+{% endblock %}

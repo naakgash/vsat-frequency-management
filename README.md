@@ -6,10 +6,47 @@ Replaces spreadsheet-based frequency planning with a controlled multi-user appli
 the hierarchy `Satellite → Beam → Satnet → Satnet Path`, with derived engineering values, guided
 operator workflows, and overlap prevention enforced at the UI, service and PostgreSQL layers.
 
-**Status:** Design phase. No application code yet — the design documents below are under review and
-implementation has not started.
+**Status:** Slice **S1 — Foundation** delivered. Application configuration, PostgreSQL 16 with the
+required extensions, health endpoints, the English interface shell and the CI guard rails are in
+place. No domain model yet; see the [slice plan](docs/design/05-vertical-slice-plan.md) for what
+lands when.
 
 **Source of truth:** `VSAT Spectrum Allocation Platform — Root Specification v1.0`.
+
+---
+
+## Quick start
+
+Requires Docker and Docker Compose.
+
+```bash
+cp .env.example .env          # then set DJANGO_SECRET_KEY
+make up                       # database, migrations, health check — one command (spec 22.1)
+```
+
+The application is served at http://127.0.0.1:8000.
+
+For native development against a local PostgreSQL 16 cluster:
+
+```bash
+make install                  # uv sync from the committed lock file
+make migrate
+make run
+```
+
+### Everyday commands
+
+| Command | Purpose |
+|---|---|
+| `make test` | Test suite against real PostgreSQL |
+| `make check` | Ruff, mypy and the module dependency contract |
+| `make test-db` | Database constraint tests only |
+| `make vendor` | Re-fetch vendored front-end assets |
+| `make help` | All targets |
+
+PostgreSQL is required — there is no SQLite path. Exclusion constraints, `int8range` and
+`btree_gist` are the final defence against overlapping allocations (spec §8.3), and none of them
+exist in SQLite, so a green SQLite suite would prove nothing about the behaviour that matters most.
 
 ---
 
@@ -23,6 +60,17 @@ implementation has not started.
 | 03 | [Permissions and authorization](docs/design/03-permissions-and-authorization.md) | Capability matrix, scope model, four enforcement layers, URL map |
 | 04 | [Database constraints and transactions](docs/design/04-database-constraints-and-transactions.md) | Exclusion constraints, CHECKs, indexes, triggers, transaction boundaries |
 | 05 | [Vertical slice plan](docs/design/05-vertical-slice-plan.md) | 19 slices from foundation to cutover, with the §27 report format |
+
+## Delivered slices
+
+| Slice | Report | Acceptance criteria |
+|---|---|---|
+| S1 — Foundation and Health | [docs/slices/01-foundation.md](docs/slices/01-foundation.md) | §26.1, §26.5, §26.9 enforced by CI; §26.18 partial |
+
+## Architecture decisions
+
+- [ADR-0001 — Modular monolith](docs/adr/0001-modular-monolith.md)
+- [ADR-0002 — Server-rendered Django with HTMX](docs/adr/0002-django-htmx-server-rendered.md)
 
 ## Before implementation starts
 

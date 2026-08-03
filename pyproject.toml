@@ -1,0 +1,106 @@
+[project]
+name = "vsat-spectrum-allocation"
+version = "0.1.0"
+description = "VSAT spectrum planning, frequency allocation and operational tracking platform"
+requires-python = ">=3.12,<3.13"
+license = { text = "Proprietary" }
+
+dependencies = [
+    "Django>=5.2.7,<5.3",
+    "psycopg[binary]>=3.2.10,<4",
+    "gunicorn>=23.0.0,<24",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2,<9",
+    "pytest-django>=4.11.1,<5",
+    "hypothesis>=6.140.3,<7",
+    "ruff>=0.14.0,<0.15",
+    "mypy>=1.18.2,<2",
+    "django-stubs[compatible-mypy]>=5.2.7,<6",
+    "import-linter>=2.4,<3",
+]
+
+# ---------------------------------------------------------------------------
+# Ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # isort
+    "UP",        # pyupgrade
+    "B",         # bugbear
+    "DJ",        # flake8-django
+    "S",         # bandit
+    "C4",        # comprehensions
+    "RUF",
+]
+ignore = [
+    "S101",  # assert is the point of a test suite
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106"]
+# Settings modules use star imports by design so each environment overrides a shared base.
+"config/settings/*" = ["E402", "F403", "F405"]
+# RUF001 flags characters that look like ASCII but are not — a genuinely useful check for
+# an English-only product (section 1). This one file must contain Turkish text in order
+# to prove the language guard rail actually detects it.
+"tests/ui/test_language.py" = ["RUF001"]
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+addopts = "--strict-markers -ra"
+filterwarnings = ["error::DeprecationWarning"]
+
+# ---------------------------------------------------------------------------
+# mypy — strict on the pure domain layer, pragmatic elsewhere
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["migrations/"]
+
+[[tool.mypy.overrides]]
+module = "calculations.*"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+# ---------------------------------------------------------------------------
+# import-linter — enforces the module dependency direction of docs/design/01
+#
+# Contracts grow with each slice; only modules that exist are listed. See
+# docs/design/01-repository-structure.md section 1 for the full target graph.
+# ---------------------------------------------------------------------------
+[tool.importlinter]
+root_packages = ["config", "operations"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "config is the composition root and nothing imports it"
+type = "forbidden"
+source_modules = ["operations"]
+forbidden_modules = ["config"]

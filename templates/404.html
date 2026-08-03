@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Page not found &middot; VSAT Spectrum Allocation Platform{% endblock %}
+{% block content %}
+<div class="row"><div class="col-12 col-lg-8">
+  <h1 class="h3">Page not found</h1>
+  <p>The page you requested does not exist, or it is outside your authorization scope.</p>
+  <a class="btn btn-secondary" href="{% url 'home' %}">Return to dashboard</a>
+</div></div>
+{% endblock %}
