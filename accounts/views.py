@@ -11,7 +11,7 @@ from typing import Any, cast
 
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
@@ -20,6 +20,7 @@ from django.views.generic import DetailView, ListView
 from accounts import services
 from accounts.constants import MANAGE_USERS
 from accounts.forms import RoleAssignmentForm, ThrottledAuthenticationForm
+from accounts.mixins import AuditedPermissionRequiredMixin
 from accounts.models import User
 
 
@@ -54,7 +55,7 @@ class LogoutView(auth_views.LogoutView):
         return super().post(request, *args, **kwargs)
 
 
-class UserListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+class UserListView(LoginRequiredMixin, AuditedPermissionRequiredMixin, ListView):
     """Administration: list users."""
 
     permission_required = MANAGE_USERS
@@ -66,7 +67,7 @@ class UserListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         return User.objects.prefetch_related("groups").order_by("username")
 
 
-class UserDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+class UserDetailView(LoginRequiredMixin, AuditedPermissionRequiredMixin, DetailView):
     """Administration: view a user and their roles."""
 
     permission_required = MANAGE_USERS

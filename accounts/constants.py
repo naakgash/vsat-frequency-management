@@ -44,6 +44,16 @@ VIEW_ALL_AUDIT = "audit.view_all_auditevent"
 VIEW_SPECIFICATION = "specifications.view_specificationdefinition"
 CHANGE_SPECIFICATION = "specifications.change_specificationdefinition"
 
+VIEW_SATELLITE = "inventory.view_satellite"
+VIEW_BAND = "inventory.view_band"
+VIEW_GATEWAY = "inventory.view_gateway"
+VIEW_HUB = "inventory.view_hub"
+VIEW_EQUIPMENT = "inventory.view_equipmentprofile"
+MANAGE_INVENTORY = "inventory.manage_inventory"
+
+#: Read access to inventory is uniform across the five entities.
+_ALL_ROLES = (Role.ADMIN, Role.OPERATOR, Role.APPROVER, Role.OBSERVER)
+
 #: Capability -> roles that hold it. Seeded into the role groups by a data migration and
 #: asserted, cell by cell, by tests/permissions/test_matrix.py.
 CAPABILITY_MATRIX: dict[str, tuple[str, ...]] = {
@@ -55,4 +65,13 @@ CAPABILITY_MATRIX: dict[str, tuple[str, ...]] = {
     # Only an administrator edits it (specification section 12, acceptance criterion 26.2).
     VIEW_SPECIFICATION: (Role.ADMIN, Role.OPERATOR, Role.APPROVER, Role.OBSERVER),
     CHANGE_SPECIFICATION: (Role.ADMIN,),
+    # Inventory is readable by every role — an Operator selecting a Beam needs to see the
+    # Satellite and Band behind it. Only an administrator may create or change master
+    # data (specification section 12).
+    VIEW_SATELLITE: _ALL_ROLES,
+    VIEW_BAND: _ALL_ROLES,
+    VIEW_GATEWAY: _ALL_ROLES,
+    VIEW_HUB: _ALL_ROLES,
+    VIEW_EQUIPMENT: _ALL_ROLES,
+    MANAGE_INVENTORY: (Role.ADMIN,),
 }

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ object.code }} &middot; Gateways{% endblock %}
+{% block content %}
+{% include "inventory/_detail_header.html" with entity="gateway" list_url="inventory:gateway-list" list_label="Gateways" %}
+<div class="row g-4">
+  <div class="col-12 col-lg-7"><div class="card h-100"><div class="card-body">
+    <h2 class="h6 card-title text-uppercase text-body-secondary">Site</h2>
+    <dl class="row mb-0">
+      <dt class="col-sm-4">Location</dt><dd class="col-sm-8">{{ object.location|default:"—" }}</dd>
+      <dt class="col-sm-4">Latitude</dt><dd class="col-sm-8">{{ object.latitude|default:"—" }}</dd>
+      <dt class="col-sm-4">Longitude</dt><dd class="col-sm-8">{{ object.longitude|default:"—" }}</dd>
+      <dt class="col-sm-4">Time zone</dt><dd class="col-sm-8">{{ object.time_zone|default:"—" }}</dd>
+      <dt class="col-sm-4">Notes</dt><dd class="col-sm-8">{{ object.technical_notes|default:"—" }}</dd>
+    </dl>
+    <h2 class="h6 card-title text-uppercase text-body-secondary mt-4">Hubs at this site</h2>
+    <ul class="list-unstyled mb-0">
+      {% for hub in object.hubs.all %}
+        <li><a href="{{ hub.get_absolute_url }}">{{ hub.code }}</a> — {{ hub.name }}</li>
+      {% empty %}<li class="text-body-secondary small">No hubs yet.</li>{% endfor %}
+    </ul>
+  </div></div></div>
+  <div class="col-12 col-lg-5">{% include "inventory/_dependency_summary.html" %}</div>
+</div>
+{% endblock %}

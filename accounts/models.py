@@ -81,6 +81,74 @@ class User(AbstractUser):
         return [Role(name).label for name in Role.values if name in held]
 
 
+class ScopeGrant(models.Model):
+    """Base for object-level authorization grants (specification section 6).
+
+    The foreign key on each subclass is declared as a **string reference** to a model in
+    ``inventory``. That is deliberate and load-bearing: it gives full referential
+    integrity without ``accounts`` importing a domain module, which is what keeps the
+    ``accounts does not import domain modules`` contract intact. The resolvers that
+    interpret these grants live in ``inventory``, which may import ``accounts``.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    granted_at = models.DateTimeField(auto_now_add=True)
+    granted_by = models.ForeignKey(
+        "accounts.User", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    note = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        abstract = True
+
+
+class UserGatewayScope(ScopeGrant):
+    """Authorises a user for a Gateway, and — per A-17 — for its Hubs.
+
+    The cascade is the point: granting a teleport site should not require listing every
+    hub at it, and a hub added later should be covered without a second grant. OQ-30
+    confirms this reading.
+    """
+
+    user = models.ForeignKey(
+        "accounts.User", on_delete=models.CASCADE, related_name="gateway_scopes"
+    )
+    gateway = models.ForeignKey(
+        "inventory.Gateway", on_delete=models.PROTECT, related_name="user_scopes"
+    )
+
+    class Meta:
+        db_table = "user_gateway_scope"
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(fields=["user", "gateway"], name="uq_user_gateway_scope"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user} -> gateway {self.gateway_id}"
+
+
+class UserHubScope(ScopeGrant):
+    """Authorises a user for one Hub.
+
+    Does **not** imply the parent Gateway: a hub-level grant is narrower than a site-level
+    one, and widening it silently would hand out access nobody granted (A-17).
+    """
+
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="hub_scopes")
+    hub = models.ForeignKey("inventory.Hub", on_delete=models.PROTECT, related_name="user_scopes")
+
+    class Meta:
+        db_table = "user_hub_scope"
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(fields=["user", "hub"], name="uq_user_hub_scope"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user} -> hub {self.hub_id}"
+
+
 class LoginAttempt(models.Model):
     """Record of one authentication attempt, successful or not.
 

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ object.code }} &middot; Satellites{% endblock %}
+{% block content %}
+{% include "inventory/_detail_header.html" with entity="satellite" list_url="inventory:satellite-list" list_label="Satellites" %}
+<div class="row g-4">
+  <div class="col-12 col-lg-7"><div class="card h-100"><div class="card-body">
+    <h2 class="h6 card-title text-uppercase text-body-secondary">Identity</h2>
+    <dl class="row mb-0">
+      <dt class="col-sm-4">Operator</dt><dd class="col-sm-8">{{ object.operator|default:"—" }}</dd>
+      <dt class="col-sm-4">Orbit type</dt><dd class="col-sm-8">{{ object.get_orbit_type_display }}</dd>
+      <dt class="col-sm-4">Orbital position</dt><dd class="col-sm-8">{{ object.orbital_position|default:"—" }}</dd>
+      <dt class="col-sm-4">Effective from</dt><dd class="col-sm-8">{{ object.effective_from }}</dd>
+      <dt class="col-sm-4">Effective until</dt><dd class="col-sm-8">{{ object.effective_until|default:"Open-ended" }}</dd>
+      <dt class="col-sm-4">Description</dt><dd class="col-sm-8">{{ object.description|default:"—" }}</dd>
+      <dt class="col-sm-4">Reference</dt><dd class="col-sm-8">{{ object.engineering_reference|default:"—" }}</dd>
+    </dl>
+  </div></div></div>
+  <div class="col-12 col-lg-5">{% include "inventory/_dependency_summary.html" %}</div>
+</div>
+{% endblock %}

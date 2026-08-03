@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Gateways &middot; Inventory{% endblock %}
+{% block content %}
+{% include "inventory/_list_header.html" with title="Gateways" entity="gateway" blurb="Teleport sites. A Gateway is a physical site; a Hub is a baseband platform at that site." %}
+<div class="table-responsive"><table class="table table-hover align-middle">
+  <caption class="visually-hidden">Gateways</caption>
+  <thead><tr>
+    <th scope="col">Code</th><th scope="col">Name</th><th scope="col">Location</th>
+    <th scope="col">Time zone</th><th scope="col" class="text-end">Hubs</th><th scope="col">Status</th>
+  </tr></thead>
+  <tbody>
+    {% for object in objects %}
+      <tr>
+        <th scope="row" class="fw-normal"><a href="{{ object.get_absolute_url }}">{{ object.code }}</a></th>
+        <td>{{ object.name }}</td>
+        <td>{{ object.location|default:"—" }}</td>
+        <td>{{ object.time_zone|default:"—" }}</td>
+        <td class="text-end">{{ object.hub_count }}</td>
+        <td>{% include "inventory/_status_badge.html" %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="text-center text-body-secondary py-4">No gateways within your authorization scope.</td></tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}
