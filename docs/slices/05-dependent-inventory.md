@@ -26,13 +26,14 @@ version-history and supersede screens, and the `_version_panel`, `_index_entry` 
 `_form_fields` partials
 
 **Tests** — `tests/inventory/{test_versioning,test_dependent_constraints,test_dependent_views,test_units}.py`,
-plus `factories.py`
+`tests/test_container_startup.py`, plus `factories.py`
 
 **Documentation** — `docs/adr/0012-master-data-versioning.md`, an amendment to ADR-0003,
 this report
 
 **Tooling** — `Makefile` and `.github/workflows/ci.yml`: the `types` gate now covers every
-application module (see below)
+application module; `docker/entrypoint.sh`, `compose.yaml` and the `up` target, which had
+never worked (see below); `PyYAML` added as a test-only dependency
 
 ## Database impact
 
@@ -109,6 +110,54 @@ handing it to a service; `test_an_edit_records_the_values_that_were_actually_rep
 the audit behaviour directly, so the regression is caught even if the versioning guard is
 ever relaxed.
 
+### `make up` had never worked
+
+Reported immediately after this slice was pushed: `docker compose up` reported the web
+container **Started**, and the next command failed with
+`init process is not running: failed precondition`. That message names neither the check
+nor the settings module involved, which is most of why it went unnoticed.
+
+`docker/entrypoint.sh` runs `set -eu` and then, unconditionally:
+
+```sh
+python manage.py collectstatic --noinput --clear
+python manage.py check --deploy --fail-level WARNING
+```
+
+compose starts that same image with `DJANGO_SETTINGS_MODULE=config.settings.local`, where
+`DEBUG` is on and the secure-cookie flags are off **by design** — local development is
+plain HTTP, and a secure-only session cookie makes signing in impossible. `--deploy`
+therefore reports six warnings, `--fail-level WARNING` turns them into a non-zero exit, and
+`set -e` kills the container at boot. The entrypoint was asserting the posture that the
+local settings module exists to switch off.
+
+`collectstatic --clear` was a second, independent failure: compose bind-mounts the working
+tree over `/app` and the container runs as uid 1001, so it writes into the developer's
+checkout as the wrong user — and `runserver` serves static files from the finders anyway
+while `DEBUG` is on.
+
+Fixed by branching the entrypoint on the settings module: production keeps `collectstatic`
+and the full `--deploy` assertion, everything else runs a plain `manage.py check`. Two
+related corrections came with it — the duplicate `migrate` was removed from the compose
+`command` (§22.3 makes applying migrations a separate, visible step, which is what the
+entrypoint's own comment already said), and `make up` now passes `--wait` so it blocks
+until both containers are healthy instead of racing their startup. It also seeds the demo
+accounts, which its own help text had been claiming since S1.
+
+`tests/test_container_startup.py` runs the same checks the entrypoint runs, against the
+same settings modules, in process — no Docker needed, which is the point. It asserts that
+the deploy check **passes** under production settings, that the plain check passes under
+local, and — stated explicitly so nobody "fixes" it back — that the deploy check **fails**
+under local settings, because that is correct behaviour rather than a defect.
+
+Writing those tests surfaced one more leak: `tests/ui/conftest.py` sets
+`DJANGO_ALLOW_ASYNC_UNSAFE` in its module body, which a comment described as "scoped to
+browser tests". A conftest body executes during collection of the whole session, so it is
+live for every test and inherited by any subprocess one starts — where Django reports it as
+`async.E001`. It has to stay at module level (the session-scoped browser fixtures touch the
+ORM before any function-scoped fixture could set it), so the comment now says what actually
+happens and the subprocess drops it along with the other harness-only variables.
+
 ### A gate that was not covering what it claimed
 
 `make types` ran `mypy config operations` — the S1 module list, never widened. `accounts`,
@@ -122,13 +171,14 @@ now inherits `EffectiveDatedModel` and `DeactivatableModel` directly.
 
 ## Tests added
 
-373 tests total, up from 282. 91 new:
+382 tests total, up from 282. 100 new:
 
 | File | Covers |
 |---|---|
 | `test_versioning.py` (16) | Supersede closes the predecessor and opens the successor; touching periods allowed, overlapping refused by the database; a successor cannot predate its predecessor; double-supersede refused; audit carries before and after; **engineering values of an in-use record cannot be edited in place, but its description can**; history and current-version helpers; all three versioned entities on the same machinery |
 | `test_dependent_constraints.py` (15) | Half-open window ranges; one polarization per window (**A-04**); FWD and RTN side rules; **a lying side column refused by the composite foreign key**; a window used by a path cannot be deleted; each guard mode accepts a complete policy and refuses an incomplete one; **no dependent inventory is seeded** |
 | `test_dependent_views.py` (42, incl. parametrisation) | Read for every role and sign-in required on all three lists; current-versions-only by default with an explicit *all versions* view; the index counts a versioned window once; direct-POST writes refused for non-admins and audited; form-level mirrors of the CHECKs; side columns derived not accepted; supersede over HTTP; the retroactive-edit refusal names the supported route; version screens 404 for an unversioned entity; the activation route still resolves alongside the new version routes |
+| `test_container_startup.py` (9) | The deploy check passes under production settings and fails under local; the plain check passes under local; the entrypoint branches on the settings module, does not migrate, `exec`s its arguments, and is executable; compose runs development settings and publishes PostgreSQL on loopback only |
 | `test_units.py` (18) | MHz↔Hz round-trips; sub-Hz input refused rather than rounded; the classic float failure shown not to occur; Ka-band exceeds 32-bit; the `mhz`/`hz` filters including the em-dash for absent values; **the two display paths compared against each other** |
 
 ## Acceptance criteria covered
@@ -144,7 +194,7 @@ now inherits `EffectiveDatedModel` and `DeactivatableModel` directly.
 ## Verification performed
 
 ```
-pytest                                   373 passed
+pytest                                   382 passed
 pytest -m browser                        8 passed
 ruff check . / ruff format --check .     clean
 mypy (6 modules, widened this slice)     no issues in 72 source files

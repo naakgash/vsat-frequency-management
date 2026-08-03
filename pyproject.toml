@@ -21,6 +21,9 @@ dev = [
     "django-stubs[compatible-mypy]>=5.2.7,<6",
     "import-linter>=2.4,<3",
     "pytest-playwright>=0.7,<0.8",
+    # Test-only: tests/test_container_startup.py reads compose.yaml as data rather
+    # than grepping it, so a reformatted or reordered file does not break the check.
+    "PyYAML>=6.0,<7",
 ]
 
 # ---------------------------------------------------------------------------

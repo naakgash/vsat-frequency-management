@@ -55,12 +55,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command:
-      - sh
-      - -c
-      - |
-        python manage.py migrate --noinput
-        python manage.py runserver 0.0.0.0:8000
+    # Migrations are not run here, for the reason given in docker/entrypoint.sh: section
+    # 22.3 makes applying them a separate, reviewed step. `make up` runs them explicitly
+    # once the container is healthy, so the step is visible in the output rather than
+    # buried in a container's startup log.
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
 volumes:
   postgres_data:
