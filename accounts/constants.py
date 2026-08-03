@@ -49,6 +49,9 @@ VIEW_BAND = "inventory.view_band"
 VIEW_GATEWAY = "inventory.view_gateway"
 VIEW_HUB = "inventory.view_hub"
 VIEW_EQUIPMENT = "inventory.view_equipmentprofile"
+VIEW_GUARD_POLICY = "inventory.view_guardpolicy"
+VIEW_FREQUENCY_WINDOW = "inventory.view_frequencywindow"
+VIEW_PAYLOAD_PATH = "inventory.view_payloadpath"
 MANAGE_INVENTORY = "inventory.manage_inventory"
 
 #: Read access to inventory is uniform across the five entities.
@@ -73,5 +76,8 @@ CAPABILITY_MATRIX: dict[str, tuple[str, ...]] = {
     VIEW_GATEWAY: _ALL_ROLES,
     VIEW_HUB: _ALL_ROLES,
     VIEW_EQUIPMENT: _ALL_ROLES,
+    VIEW_GUARD_POLICY: _ALL_ROLES,
+    VIEW_FREQUENCY_WINDOW: _ALL_ROLES,
+    VIEW_PAYLOAD_PATH: _ALL_ROLES,
     MANAGE_INVENTORY: (Role.ADMIN,),
 }

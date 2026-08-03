@@ -143,10 +143,27 @@ def test_registering_the_same_label_twice_replaces_rather_than_duplicates():
 
 @pytest.mark.django_db
 def test_models_with_no_registered_dependency_summarise_empty():
-    """A Satellite has no dependants until Beams land in S8."""
+    """A Payload Path has no dependants until Satnet Paths land in S11."""
+    from tests.inventory.factories import make_payload_path
+
+    path = make_payload_path()
+
+    assert dependencies.summarise(path) == []
+    assert dependencies.is_in_use(path) is False
+
+
+@pytest.mark.django_db
+def test_a_model_with_registrations_but_no_dependants_reports_zeros():
+    """Zero is not the same as unregistered.
+
+    "0 Frequency Windows" tells an administrator the Satellite is safe to deactivate; an
+    empty summary is ambiguous between "none" and "nothing checked" (section 3.2).
+    """
     satellite = Satellite.objects.create(
         code="SAT-X", name="X", orbit_type="GEO", effective_from="2026-01-01T00:00:00Z"
     )
 
-    assert dependencies.summarise(satellite) == []
+    summary = {d.label: d.count for d in dependencies.summarise(satellite)}
+
+    assert summary == {"Frequency Windows": 0, "Payload Paths": 0}
     assert dependencies.is_in_use(satellite) is False

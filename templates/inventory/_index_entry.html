@@ -1,0 +1,23 @@
+{% comment %}
+One row of the inventory index, on either side of the section 3 split.
+
+An entity a later slice delivers is rendered as plain text with the slice named, not as a
+dead link: the intended shape of the product stays visible without offering something that
+does not work yet. Both cases render from the same declaration in ``inventory/views.py``,
+so the index cannot claim a screen exists when it does not.
+{% endcomment %}
+<li class="list-group-item d-flex justify-content-between align-items-start">
+  <span>
+    {% if entry.url_name %}
+      <a href="{% url entry.url_name %}" class="fw-semibold">{{ entry.label }}</a>
+    {% else %}
+      <span class="fw-semibold text-body-secondary">{{ entry.label }}</span>
+    {% endif %}
+    <span class="d-block small text-body-secondary">{{ entry.blurb }}</span>
+  </span>
+  {% if entry.url_name %}
+    <span class="badge text-bg-secondary rounded-pill">{{ entry.count }}</span>
+  {% else %}
+    <span class="badge text-bg-light border">Slice {{ entry.slice }}</span>
+  {% endif %}
+</li>

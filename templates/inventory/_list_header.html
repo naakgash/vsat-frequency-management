@@ -8,6 +8,13 @@
     <p class="text-body-secondary mb-0">{{ blurb }}</p>
   </div>
   {% if can_manage %}
-    <a class="btn btn-primary" href="{% url 'inventory:create' entity=entity %}">Add {{ title|slice:":-1" }}</a>
+    {% comment %}
+    ``add_label`` overrides the naive singular. Dropping the final character works for
+    "Satellites" and wrongly for "Guard Policies", so any list whose plural is not formed
+    by adding an "s" passes its own label.
+    {% endcomment %}
+    <a class="btn btn-primary" href="{% url 'inventory:create' entity=entity %}">
+      Add {% firstof add_label title|slice:":-1" %}
+    </a>
   {% endif %}
 </div>

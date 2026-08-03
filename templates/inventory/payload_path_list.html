@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load rf %}
+{% block title %}Payload Paths &middot; Inventory{% endblock %}
+{% block content %}
+{% include "inventory/_list_header.html" with title="Payload Paths" add_label="Payload Path" blurb="How a satellite translates one uplink window into one downlink window. The mapping must be deterministic (section 13.7), so the method and constant are stored rather than inferred." %}
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <p class="small text-body-secondary mb-0">
+    {% if showing_all_versions %}
+      Showing every version. Superseded rows are shown in muted text.
+    {% else %}
+      Showing the version in force for each Path.
+    {% endif %}
+  </p>
+  {% if showing_all_versions %}
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'inventory:payload-path-list' %}">Current versions only</a>
+  {% else %}
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'inventory:payload-path-list' %}?versions=all">Show all versions</a>
+  {% endif %}
+</div>
+
+<div class="table-responsive"><table class="table table-hover align-middle">
+  <caption class="visually-hidden">Payload paths</caption>
+  <thead><tr>
+    <th scope="col">Code</th><th scope="col">Satellite</th><th scope="col">Direction</th>
+    <th scope="col">Uplink window</th><th scope="col">Downlink window</th>
+    <th scope="col">Translation</th>
+    <th scope="col" class="text-end rf-value">Constant</th>
+    <th scope="col">Inverting</th>
+    <th scope="col" class="text-end">Version</th>
+    <th scope="col">Status</th>
+  </tr></thead>
+  <tbody>
+    {% for object in objects %}
+      <tr{% if object.effective_until %} class="text-body-secondary"{% endif %}>
+        <th scope="row" class="fw-normal"><a href="{{ object.get_absolute_url }}">{{ object.code }}</a></th>
+        <td>{{ object.satellite.code }}</td>
+        <td>{{ object.get_direction_display }}</td>
+        <td>
+          <a href="{{ object.uplink_window.get_absolute_url }}">{{ object.uplink_window.code }}</a>
+          <span class="d-block small text-body-secondary">{{ object.get_uplink_window_side_display }}</span>
+        </td>
+        <td>
+          <a href="{{ object.downlink_window.get_absolute_url }}">{{ object.downlink_window.code }}</a>
+          <span class="d-block small text-body-secondary">{{ object.get_downlink_window_side_display }}</span>
+        </td>
+        <td><code class="small">{{ object.get_translation_method_display }}</code></td>
+        <td class="text-end rf-value">{{ object.translation_constant_hz|mhz }}</td>
+        <td>{% if object.is_inverting %}Yes{% else %}No{% endif %}</td>
+        <td class="text-end">
+          {{ object.version_number }}{% if object.effective_until %} <span class="badge text-bg-light border">Superseded</span>{% endif %}
+        </td>
+        <td>{% include "inventory/_status_badge.html" %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="10" class="text-center text-body-secondary py-4">
+        No payload paths yet. Translation methods and constants are OQ-02 and are supplied
+        by RF engineering, not shipped with the product.
+      </td></tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+<p class="small text-body-secondary">
+  A forward path runs hub uplink to remote downlink; a return path runs remote uplink to
+  hub downlink. The database refuses any other combination.
+</p>
+{% endblock %}

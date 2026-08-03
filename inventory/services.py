@@ -15,7 +15,7 @@ from accounts import policy
 from accounts.models import User
 from accounts.types import Actor
 from audit import services as audit_services
-from inventory import dependencies
+from inventory import dependencies, versioning
 from inventory.constants import (
     INVENTORY_CREATED,
     INVENTORY_DEACTIVATED,
@@ -23,7 +23,7 @@ from inventory.constants import (
     INVENTORY_UPDATED,
     MANAGE_INVENTORY,
 )
-from inventory.models import InventoryRecord
+from inventory.models import InventoryRecord, MasterDataVersioned
 
 
 class StaleRecordError(Exception):
@@ -80,8 +80,20 @@ def update[ModelT: InventoryRecord](
     expected_version: int | None = None,
     reason: str = "",
 ) -> ModelT:
-    """Update an inventory record, with optimistic locking (section 15.5)."""
+    """Update an inventory record, with optimistic locking (section 15.5).
+
+    A versioned record whose engineering values are referenced by operational data cannot
+    be changed in place: section 13.6 requires a new version instead. The guard lives here
+    rather than in the form so the importer and any management command inherit it.
+    """
     policy.require(actor, MANAGE_INVENTORY, instance, reason=reason)
+
+    if isinstance(instance, MasterDataVersioned):
+        changed = {
+            field for field, value in values.items() if getattr(instance, field, None) != value
+        }
+        versioning.assert_editable(instance, changed)
+
     return _update(
         actor=actor,
         instance=instance,

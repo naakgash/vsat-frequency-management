@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ object.code }} versions &middot; {{ entity_label }}{% endblock %}
+{% block content %}
+<nav aria-label="Breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'inventory:index' %}">Inventory</a></li>
+  <li class="breadcrumb-item"><a href="{% url list_url %}">{{ entity_label }}s</a></li>
+  <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object.code }}</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Versions</li>
+</ol></nav>
+
+<h1 class="h3 mb-1">{{ object.code }} — version history</h1>
+<p class="text-body-secondary">
+  Specification section 13.6: a record in operational use is changed by creating a new
+  version, never by overwriting the old one. Every allocation keeps the definition it was
+  validated against.
+</p>
+
+<div class="table-responsive"><table class="table align-middle">
+  <caption class="visually-hidden">Versions of {{ object.code }}, oldest first</caption>
+  <thead><tr>
+    <th scope="col">Version</th>
+    <th scope="col">Effective from</th>
+    <th scope="col">Effective until</th>
+    <th scope="col">Supersedes</th>
+    <th scope="col">Status</th>
+    <th scope="col"></th>
+  </tr></thead>
+  <tbody>
+    {% for version in versions %}
+      <tr{% if version.pk == object.pk %} class="table-active"{% endif %}>
+        <th scope="row" class="fw-normal">
+          v{{ version.version_number }}
+          {% if version.pk == object.pk %}<span class="badge text-bg-secondary">Viewing</span>{% endif %}
+        </th>
+        <td>{{ version.effective_from|date:"Y-m-d H:i" }}</td>
+        <td>
+          {% if version.effective_until %}
+            {{ version.effective_until|date:"Y-m-d H:i" }}
+          {% else %}
+            <span class="text-body-secondary">Open-ended</span>
+          {% endif %}
+        </td>
+        <td>{% if version.supersedes %}v{{ version.supersedes.version_number }}{% else %}—{% endif %}</td>
+        <td>
+          {% if version == current %}
+            <span class="badge text-bg-primary">In force</span>
+          {% elif version.effective_until %}
+            <span class="badge text-bg-light border">Superseded</span>
+          {% else %}
+            {% include "inventory/_status_badge.html" with object=version %}
+          {% endif %}
+        </td>
+        <td class="text-end"><a href="{{ version.get_absolute_url }}">Open</a></td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+
+<div class="card mt-3"><div class="card-body">
+  <h2 class="h6 card-title text-uppercase text-body-secondary">What a new version is for</h2>
+  <p class="small mb-2">
+    These fields cannot be changed on a version that operational records already
+    reference, because changing them would change what those records were validated
+    against:
+  </p>
+  <p class="small mb-2">
+    {% for field in engineering_fields %}<code>{{ field }}</code>{% if not forloop.last %} {% endif %}{% endfor %}
+  </p>
+  <p class="small text-body-secondary mb-0">
+    Everything else — names, descriptions, reference documents — may be corrected in
+    place. Refusing to let someone fix a typo would only push the correction into the
+    database, where nothing records it.
+  </p>
+</div></div>
+
+<p class="mt-3">
+  <a href="{{ object.get_absolute_url }}">Back to {{ object.code }}</a>
+  {% if can_manage and not object.effective_until %}
+    · <a href="{% url 'inventory:supersede' entity=entity pk=object.pk %}">Create the next version</a>
+  {% endif %}
+</p>
+{% endblock %}

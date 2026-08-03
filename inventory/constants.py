@@ -76,3 +76,59 @@ INVENTORY_CREATED = "INVENTORY_CREATED"
 INVENTORY_UPDATED = "INVENTORY_UPDATED"
 INVENTORY_DEACTIVATED = "INVENTORY_DEACTIVATED"
 INVENTORY_REACTIVATED = "INVENTORY_REACTIVATED"
+
+
+class Direction(models.TextChoices):
+    """Payload direction. Specification section 13.7."""
+
+    FWD = "FWD", "Forward"
+    RTN = "RTN", "Return"
+
+
+class SpectrumLeg(models.TextChoices):
+    """One side of one direction's payload chain.
+
+    Specification section 13.6 calls this a Frequency Window "side"; sections 8.1 and
+    13.11 call it a "leg". They are the same concept, modelled once (**A-02**).
+
+    A FWD path runs ``HUB_UPLINK`` to ``REMOTE_DOWNLINK``; a RTN path runs
+    ``REMOTE_UPLINK`` to ``HUB_DOWNLINK`` (**A-03**).
+    """
+
+    HUB_UPLINK = "HUB_UPLINK", "Hub uplink"
+    REMOTE_DOWNLINK = "REMOTE_DOWNLINK", "Remote downlink"
+    REMOTE_UPLINK = "REMOTE_UPLINK", "Remote uplink"
+    HUB_DOWNLINK = "HUB_DOWNLINK", "Hub downlink"
+
+
+class TranslationMethod(models.TextChoices):
+    """How a Payload Path maps an uplink frequency to its downlink frequency.
+
+    Specification section 13.7 requires a deterministic mapping and offers "translation
+    offset or satellite LO". Both shapes are modelled:
+
+    * ``OFFSET_ADD``      — ``downlink = uplink + constant``
+    * ``OFFSET_SUBTRACT`` — ``downlink = uplink - constant``
+    * ``LO_REFLECT``      — ``downlink = constant - uplink``, which inverts the spectrum
+
+    Which method and constant applies to any real payload is **OQ-02**. Nothing is seeded.
+    """
+
+    OFFSET_ADD = "OFFSET_ADD", "Downlink = uplink + offset"
+    OFFSET_SUBTRACT = "OFFSET_SUBTRACT", "Downlink = uplink - offset"
+    LO_REFLECT = "LO_REFLECT", "Downlink = constant - uplink (inverting)"
+
+
+class GuardMode(models.TextChoices):
+    """How a Guard Policy computes the separation either side of a transmission.
+
+    Values are **OQ-07**; only the shapes are fixed here.
+    """
+
+    FIXED = "FIXED", "Fixed width"
+    PERCENT_OF_OCCUPIED = "PERCENT_OF_OCCUPIED", "Percentage of occupied bandwidth"
+    MAX_OF_FIXED_AND_PERCENT = "MAX_OF_FIXED_AND_PERCENT", "Greater of fixed and percentage"
+
+
+# --- Audit actions for versioned master data --------------------------------
+MASTER_DATA_VERSIONED = "MASTER_DATA_VERSIONED"

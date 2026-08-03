@@ -18,8 +18,17 @@ import pytest
 # Playwright's synchronous API runs a greenlet-backed event loop in the test thread.
 # Django detects the running loop and refuses ORM access with SynchronousOnlyOperation,
 # even though the calls are on the test's own thread and are genuinely safe here. This is
-# the documented escape hatch, and it is scoped to browser tests: it is set in this
-# conftest, not in the settings module, so no application code ever runs with it.
+# the documented escape hatch.
+#
+# It has to be set here, in the conftest body, rather than in a fixture: the session-scoped
+# fixtures that browser tests depend on (live_server among them) touch the ORM during their
+# own setup, before any function-scoped fixture could put the variable in place.
+#
+# The cost is that it is set for the whole pytest process, not only for browser tests, and
+# therefore inherited by any subprocess a test starts. `manage.py check --deploy` reports it
+# as async.E001, correctly — it is a genuine deployment error and a test-harness concession
+# at the same time. Anything spawning a Django process from a test must drop it; see
+# tests/test_container_startup.py, which is where that bit.
 os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
 
 BROWSER_ROOT = Path(os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "/opt/pw-browsers"))

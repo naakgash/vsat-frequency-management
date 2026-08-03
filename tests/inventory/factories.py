@@ -11,8 +11,28 @@ from typing import Any
 
 from django.utils import timezone
 
-from inventory.constants import ConversionMethod, EquipmentType, OrbitType, Sideband
-from inventory.models import Band, BandPolarization, EquipmentProfile, Gateway, Hub, Satellite
+from inventory.constants import (
+    ConversionMethod,
+    Direction,
+    EquipmentType,
+    GuardMode,
+    OrbitType,
+    PolarizationType,
+    Sideband,
+    SpectrumLeg,
+    TranslationMethod,
+)
+from inventory.models import (
+    Band,
+    BandPolarization,
+    EquipmentProfile,
+    FrequencyWindow,
+    Gateway,
+    GuardPolicy,
+    Hub,
+    PayloadPath,
+    Satellite,
+)
 
 
 def make_satellite(code: str = "SAT-1", **extra: Any) -> Satellite:
@@ -67,6 +87,84 @@ def make_equipment_profile(
         lo_hz=extra.pop("lo_hz", 28_050_000_000),
         conversion_method=extra.pop("conversion_method", ConversionMethod.LO_PLUS_IF),
         sideband=extra.pop("sideband", Sideband.LOW_SIDE),
+        effective_from=extra.pop("effective_from", timezone.now()),
+        **extra,
+    )
+
+
+def make_guard_policy(code: str = "GUARD-1", **extra: Any) -> GuardPolicy:
+    return GuardPolicy.objects.create(
+        code=code,
+        name=extra.pop("name", f"Guard policy {code}"),
+        mode=extra.pop("mode", GuardMode.FIXED),
+        fixed_left_hz=extra.pop("fixed_left_hz", 500_000),
+        fixed_right_hz=extra.pop("fixed_right_hz", 500_000),
+        **extra,
+    )
+
+
+def make_frequency_window(
+    satellite: Satellite | None = None,
+    code: str = "FW-1",
+    side: str = SpectrumLeg.HUB_UPLINK,
+    **extra: Any,
+) -> FrequencyWindow:
+    return FrequencyWindow.objects.create(
+        code=code,
+        name=extra.pop("name", f"Window {code}"),
+        satellite=satellite or make_satellite(),
+        band=extra.pop("band", None) or make_band(f"BAND-{code}"),
+        side=side,
+        polarization=extra.pop("polarization", PolarizationType.RHCP),
+        rf_start_hz=extra.pop("rf_start_hz", 29_000_000_000),
+        rf_end_hz=extra.pop("rf_end_hz", 29_500_000_000),
+        effective_from=extra.pop("effective_from", timezone.now()),
+        **extra,
+    )
+
+
+def make_payload_path(
+    satellite: Satellite | None = None,
+    code: str = "PP-1",
+    direction: str = Direction.FWD,
+    **extra: Any,
+) -> PayloadPath:
+    """Build a payload path with windows whose sides match its direction.
+
+    The sides are not a detail the caller should have to get right: a FWD path runs hub
+    uplink to remote downlink, and the database refuses anything else.
+    """
+    satellite = satellite or make_satellite()
+    band = make_band(f"BAND-{code}")
+
+    if direction == Direction.FWD:
+        up_side, down_side = SpectrumLeg.HUB_UPLINK, SpectrumLeg.REMOTE_DOWNLINK
+    else:
+        up_side, down_side = SpectrumLeg.REMOTE_UPLINK, SpectrumLeg.HUB_DOWNLINK
+
+    uplink = extra.pop("uplink_window", None) or make_frequency_window(
+        satellite, f"{code}-UL", up_side, band=band
+    )
+    downlink = extra.pop("downlink_window", None) or make_frequency_window(
+        satellite,
+        f"{code}-DL",
+        down_side,
+        band=band,
+        rf_start_hz=19_000_000_000,
+        rf_end_hz=19_500_000_000,
+    )
+
+    return PayloadPath.objects.create(
+        code=code,
+        name=extra.pop("name", f"Payload path {code}"),
+        satellite=satellite,
+        direction=direction,
+        uplink_window=uplink,
+        downlink_window=downlink,
+        uplink_window_side=uplink.side,
+        downlink_window_side=downlink.side,
+        translation_method=extra.pop("translation_method", TranslationMethod.OFFSET_SUBTRACT),
+        translation_constant_hz=extra.pop("translation_constant_hz", 10_000_000_000),
         effective_from=extra.pop("effective_from", timezone.now()),
         **extra,
     )

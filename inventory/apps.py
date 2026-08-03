@@ -1,4 +1,5 @@
 from django.apps import AppConfig
+from django.db.models import Q
 
 
 class InventoryConfig(AppConfig):
@@ -15,13 +16,24 @@ class InventoryConfig(AppConfig):
         """
         from accounts import scope as scope_registry
         from inventory import dependencies, scope
-        from inventory.models import Band, EquipmentProfile, Gateway, Hub
+        from inventory.models import (
+            Band,
+            EquipmentProfile,
+            FrequencyWindow,
+            Gateway,
+            GuardPolicy,
+            Hub,
+            PayloadPath,
+            Satellite,
+        )
 
         scope_registry.register(Gateway, scope.gateway_in_scope)
         scope_registry.register(Hub, scope.hub_in_scope)
 
-        # Dependencies within inventory itself. Modules above register their own as they
-        # land: Frequency Windows and Payload Paths in S5, Beams in S8.
+        # --- Dependencies within inventory -------------------------------------
+        # Modules above register their own as they land: Beams in S8, Satnets in S10,
+        # Satnet Paths in S11. This registry is how they do that without inventory
+        # importing them.
         dependencies.register(
             Gateway,
             label="Hubs",
@@ -41,4 +53,35 @@ class InventoryConfig(AppConfig):
             Band,
             label="Equipment Profiles",
             count=lambda band: EquipmentProfile.objects.filter(band=band).count(),
+        )
+        dependencies.register(
+            Band,
+            label="Frequency Windows",
+            count=lambda band: FrequencyWindow.objects.filter(band=band).count(),
+        )
+        dependencies.register(
+            Satellite,
+            label="Frequency Windows",
+            count=lambda satellite: FrequencyWindow.objects.filter(satellite=satellite).count(),
+        )
+        dependencies.register(
+            Satellite,
+            label="Payload Paths",
+            count=lambda satellite: PayloadPath.objects.filter(satellite=satellite).count(),
+        )
+        # A window referenced by a payload path has its engineering values frozen: an
+        # allocation validated against those numbers must keep them (section 13.6).
+        dependencies.register(
+            FrequencyWindow,
+            label="Payload Paths",
+            count=lambda window: PayloadPath.objects.filter(
+                Q(uplink_window=window) | Q(downlink_window=window)
+            ).count(),
+        )
+        dependencies.register(
+            GuardPolicy,
+            label="Frequency Windows",
+            count=lambda policy: FrequencyWindow.objects.filter(
+                default_guard_policy=policy
+            ).count(),
         )

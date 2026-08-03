@@ -77,11 +77,13 @@ def test_the_index_shows_the_independent_and_dependent_split(client):
 
     assert "Independent Data" in body
     assert "Dependent Data" in body
-    # Independent entities are reachable; dependent ones are named but not yet linked.
     assert "/inventory/satellites/" in body
-    assert "Frequency Windows" in body
-    assert "Payload Paths" in body
+    # Delivered dependent entities are reachable...
+    assert "/inventory/frequency-windows/" in body
+    assert "/inventory/payload-paths/" in body
+    # ...and one a later slice delivers is named without being offered as a dead link.
     assert "Beams" in body
+    assert "Slice S8" in body
 
 
 # ---------------------------------------------------------------------------

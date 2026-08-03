@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load rf %}
+{% block title %}{{ object.code }} &middot; Guard Policies{% endblock %}
+{% block content %}
+{% include "inventory/_detail_header.html" %}
+<div class="row g-4">
+  <div class="col-12 col-lg-7"><div class="card h-100"><div class="card-body">
+    <h2 class="h6 card-title text-uppercase text-body-secondary">Separation</h2>
+    <dl class="row mb-0">
+      <dt class="col-sm-5">Mode</dt><dd class="col-sm-7">{{ object.get_mode_display }}</dd>
+      <dt class="col-sm-5">Fixed left</dt><dd class="col-sm-7 rf-value">{{ object.fixed_left_hz|mhz }} MHz</dd>
+      <dt class="col-sm-5">Fixed right</dt><dd class="col-sm-7 rf-value">{{ object.fixed_right_hz|mhz }} MHz</dd>
+      <dt class="col-sm-5">Percent left</dt><dd class="col-sm-7">{{ object.percent_left|default_if_none:"—" }}</dd>
+      <dt class="col-sm-5">Percent right</dt><dd class="col-sm-7">{{ object.percent_right|default_if_none:"—" }}</dd>
+      <dt class="col-sm-5">Description</dt><dd class="col-sm-7">{{ object.description|default:"—" }}</dd>
+    </dl>
+    <p class="small text-body-secondary mt-3 mb-0">
+      A percentage applies to the occupied bandwidth. In
+      <em>{{ object.get_mode_display }}</em> mode the values not shown above are unused
+      and are stored empty rather than zero, so an absent guard is never mistaken for a
+      guard of nothing.
+    </p>
+  </div></div></div>
+  <div class="col-12 col-lg-5">
+    {% include "inventory/_dependency_summary.html" %}
+  </div>
+</div>
+{% endblock %}

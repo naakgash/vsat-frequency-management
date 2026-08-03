@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load rf %}
+{% block title %}{{ object.code }} v{{ object.version_number }} &middot; Frequency Windows{% endblock %}
+{% block content %}
+{% include "inventory/_detail_header.html" %}
+
+{% if is_superseded %}
+  <div class="alert alert-warning" role="alert">
+    This is version {{ object.version_number }}, which was superseded on
+    {{ object.effective_until|date:"Y-m-d H:i" }}. The frequencies below are the
+    definition allocations made before that date were validated against.
+    {% if current_version %}
+      The version in force is
+      <a href="{{ current_version.get_absolute_url }}" class="alert-link">version {{ current_version.version_number }}</a>.
+    {% endif %}
+  </div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-12 col-lg-7"><div class="card h-100"><div class="card-body">
+    <h2 class="h6 card-title text-uppercase text-body-secondary">Spectrum</h2>
+    <dl class="row mb-0">
+      <dt class="col-sm-5">Satellite</dt>
+      <dd class="col-sm-7"><a href="{{ object.satellite.get_absolute_url }}">{{ object.satellite.code }}</a></dd>
+      <dt class="col-sm-5">Band</dt>
+      <dd class="col-sm-7"><a href="{{ object.band.get_absolute_url }}">{{ object.band.code }}</a></dd>
+      <dt class="col-sm-5">Side</dt><dd class="col-sm-7">{{ object.get_side_display }}</dd>
+      <dt class="col-sm-5">Polarization</dt><dd class="col-sm-7">{{ object.get_polarization_display }}</dd>
+      <dt class="col-sm-5">RF range</dt>
+      <dd class="col-sm-7 rf-value">{{ object.rf_start_hz|mhz }} – {{ object.rf_end_hz|mhz }} MHz</dd>
+      <dt class="col-sm-5">Width</dt><dd class="col-sm-7 rf-value">{{ object.width_hz|mhz }} MHz</dd>
+      <dt class="col-sm-5">Minimum edge guard</dt>
+      <dd class="col-sm-7 rf-value">{{ object.min_edge_guard_hz|mhz }} MHz</dd>
+      <dt class="col-sm-5">Default guard policy</dt>
+      <dd class="col-sm-7">
+        {% if object.default_guard_policy %}
+          <a href="{{ object.default_guard_policy.get_absolute_url }}">{{ object.default_guard_policy.code }}</a>
+        {% else %}—{% endif %}
+      </dd>
+      <dt class="col-sm-5">Source reference</dt><dd class="col-sm-7">{{ object.source_reference|default:"—" }}</dd>
+      <dt class="col-sm-5">Description</dt><dd class="col-sm-7">{{ object.description|default:"—" }}</dd>
+    </dl>
+    <p class="small text-body-secondary mt-3 mb-0">
+      The range is half-open: <code>[{{ object.rf_start_hz|mhz }}, {{ object.rf_end_hz|mhz }})</code> MHz.
+      An allocation ending exactly at {{ object.rf_end_hz|mhz }} MHz fits; one starting there
+      does not. Whether the minimum edge guard forms part of an allocated range or is a
+      separate check is OQ-34 and is not decided by this screen.
+    </p>
+  </div></div></div>
+
+  <div class="col-12 col-lg-5">
+    {% include "inventory/_version_panel.html" %}
+    <div class="mt-4">{% include "inventory/_dependency_summary.html" %}</div>
+  </div>
+</div>
+{% endblock %}

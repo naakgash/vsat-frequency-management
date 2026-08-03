@@ -22,9 +22,35 @@ urlpatterns = [
         views.EquipmentDetailView.as_view(),
         name="equipment-detail",
     ),
-    # Shared create / edit / activation routes.
+    path("guard-policies/", views.GuardPolicyListView.as_view(), name="guard-policy-list"),
+    path(
+        "guard-policies/<uuid:pk>/",
+        views.GuardPolicyDetailView.as_view(),
+        name="guard-policy-detail",
+    ),
+    path(
+        "frequency-windows/",
+        views.FrequencyWindowListView.as_view(),
+        name="frequency-window-list",
+    ),
+    path(
+        "frequency-windows/<uuid:pk>/",
+        views.FrequencyWindowDetailView.as_view(),
+        name="frequency-window-detail",
+    ),
+    path("payload-paths/", views.PayloadPathListView.as_view(), name="payload-path-list"),
+    path(
+        "payload-paths/<uuid:pk>/",
+        views.PayloadPathDetailView.as_view(),
+        name="payload-path-detail",
+    ),
+    # Shared create / edit / versioning / activation routes.
     path("<str:entity>/new/", views.InventoryEditView.as_view(), name="create"),
     path("<str:entity>/<uuid:pk>/edit/", views.InventoryEditView.as_view(), name="edit"),
+    # Both must precede the activation pattern below, which would otherwise capture
+    # "versions" and "supersede" as its <str:action>.
+    path("<str:entity>/<uuid:pk>/versions/", views.VersionHistoryView.as_view(), name="versions"),
+    path("<str:entity>/<uuid:pk>/supersede/", views.SupersedeView.as_view(), name="supersede"),
     path(
         "<str:entity>/<uuid:pk>/<str:action>/",
         views.InventoryActivationView.as_view(),

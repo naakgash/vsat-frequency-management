@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ object.code }} &middot; Satellites{% endblock %}
 {% block content %}
-{% include "inventory/_detail_header.html" with entity="satellite" list_url="inventory:satellite-list" list_label="Satellites" %}
+{% include "inventory/_detail_header.html" %}
 <div class="row g-4">
   <div class="col-12 col-lg-7"><div class="card h-100"><div class="card-body">
     <h2 class="h6 card-title text-uppercase text-body-secondary">Identity</h2>

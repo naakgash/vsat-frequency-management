@@ -19,9 +19,14 @@ help:  ## Show available targets
 # The single command of specification section 22.1
 # ---------------------------------------------------------------------------
 .PHONY: up
-up:  ## Start everything: database, migrations, seed data, health check
-	docker compose up --build -d
+up:  ## Start everything: database, migrations, demo accounts, health check
+	# --wait blocks until both containers report healthy. Without it `up -d` returns as
+	# soon as they are *started*, and the migrate below races the application's own
+	# boot — which fails with "init process is not running" if the container exited,
+	# a message that says nothing about why.
+	docker compose up --build -d --wait
 	docker compose exec -T web python manage.py migrate --noinput
+	docker compose exec -T web python manage.py seed_demo
 	@$(MAKE) --no-print-directory health
 
 .PHONY: down
@@ -75,7 +80,10 @@ format:  ## Apply Ruff formatting
 
 .PHONY: types
 types:  ## Type check
-	$(MYPY) config operations
+	# Every application module, in dependency order. Named explicitly rather than
+	# passing '.': that would pull in the test suite, whose looser rules produce
+	# enough noise to hide a real error in the application itself.
+	$(MYPY) config operations audit accounts specifications inventory
 
 .PHONY: imports
 imports:  ## Enforce the module dependency direction of docs/design/01
