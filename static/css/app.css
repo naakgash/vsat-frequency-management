@@ -1,0 +1,23 @@
+/* Application styles.
+ *
+ * Specification section 10.2: spectrum and status information must never rely on colour
+ * alone. Shared helpers for patterns, borders and icon affordances live here so the
+ * spectrum view and the status badges use one vocabulary.
+ */
+
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 1080;
+  padding: 0.5rem 0.75rem;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+}
+
+/* Engineering values are read as digit groups; a tabular font stops columns jittering. */
+.rf-value,
+code {
+  font-variant-numeric: tabular-nums;
+}

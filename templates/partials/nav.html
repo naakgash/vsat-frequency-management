@@ -1,0 +1,68 @@
+{% comment %}
+Primary navigation. The order is fixed by specification section 7.
+
+Sections that no slice has delivered yet are rendered as disabled items rather than
+links, so the intended shape of the product is visible without offering a dead link.
+Each becomes a real link in the slice named in its title attribute.
+{% endcomment %}
+<nav class="navbar navbar-expand-lg bg-body border-bottom" aria-label="Primary">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-semibold" href="{% url 'home' %}">VSAT Spectrum Allocation</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+            data-bs-target="#primary-nav" aria-controls="primary-nav"
+            aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="primary-nav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link{% if request.resolver_match.url_name == 'home' %} active{% endif %}"
+             href="{% url 'home' %}"
+             {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>Dashboard</a>
+        </li>
+        <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S9">Spectrum</span></li>
+        <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S8">Beams</span></li>
+        <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S10">Satnets</span></li>
+        <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S11">Satnet Paths</span></li>
+        <li class="nav-item"><span class="nav-link disabled" title="Delivered in slices S4 and S5">Inventory</span></li>
+        <li class="nav-item"><span class="nav-link disabled" title="Delivered in slices S14 and S15">Imports &amp; Exports</span></li>
+        <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S16">Audit</span></li>
+        {% comment %}
+        Hiding this link is presentation only. The views themselves enforce the
+        capability in the backend, and tests POST directly to them to prove it
+        (specification section 12).
+        {% endcomment %}
+        {% if perms.accounts.manage_users %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'administration:user-list' %}">Administration</a>
+          </li>
+        {% else %}
+          <li class="nav-item"><span class="nav-link disabled">Administration</span></li>
+        {% endif %}
+      </ul>
+
+      <div class="d-flex align-items-center gap-3">
+        <span class="navbar-text small">
+          {% if user.is_authenticated %}
+            {{ user.get_username }}
+            {% for role in user.display_roles %}
+              <span class="badge text-bg-secondary">{{ role }}</span>
+            {% endfor %}
+          {% else %}
+            Not signed in
+          {% endif %}
+        </span>
+
+        {% if user.is_authenticated %}
+          <form method="post" action="{% url 'accounts:logout' %}" class="m-0">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-secondary">Sign out</button>
+          </form>
+        {% else %}
+          <a class="btn btn-sm btn-primary" href="{% url 'accounts:login' %}">Sign in</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</nav>

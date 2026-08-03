@@ -1,0 +1,152 @@
+"""User, role membership and login attempt records."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import timedelta
+
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+from django.utils import timezone
+
+from accounts.constants import Role
+
+
+class User(AbstractUser):
+    """Application user.
+
+    A custom model from the first migration, even though it adds little today:
+    swapping ``AUTH_USER_MODEL`` after operational data exists is one of the few
+    genuinely painful migrations in Django, and this project will need per-user scope
+    grants, MFA enrolment (section 21.6) and possibly an LDAP identifier (OQ-16).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Unique and required, unlike Django's default: account recovery and operational
+    # notification both need a reliable address.
+    email = models.EmailField(unique=True)
+
+    full_name = models.CharField(max_length=200, blank=True)
+    job_title = models.CharField(max_length=200, blank=True)
+
+    # Set when an administrator deactivates an account. Users are never deleted
+    # (specification section 20) — their audit history must remain attributable.
+    deactivated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta(AbstractUser.Meta):  # type: ignore[name-defined,misc]
+        db_table = "accounts_user"
+        permissions = [
+            ("manage_users", "Can create and edit users and assign roles"),
+            ("manage_scopes", "Can grant and revoke Beam, Hub and Gateway scope"),
+        ]
+
+    def __str__(self) -> str:
+        return self.get_username()
+
+    def get_absolute_url(self) -> str:
+        # Imported here rather than at module scope: models are loaded before the URL
+        # configuration, and a top-level import would create a circular dependency.
+        from django.urls import reverse
+
+        return reverse("administration:user-detail", kwargs={"user_id": self.pk})
+
+    # --- Roles ---------------------------------------------------------------
+    @property
+    def role_names(self) -> frozenset[str]:
+        """Role group names held by this user.
+
+        Not cached on the instance: a role change during a request must take effect
+        immediately, and the query is a single indexed join.
+        """
+        return frozenset(self.groups.values_list("name", flat=True))
+
+    def has_role(self, role: str) -> bool:
+        return role in self.role_names
+
+    @property
+    def is_admin(self) -> bool:
+        """True for the application Admin role.
+
+        Deliberately distinct from ``is_superuser``. A Django superuser is a database
+        escape hatch for emergency console use; the Admin role is a business role. Scope
+        bypass keys off this property, so that granting someone the Admin role is a
+        visible, audited act rather than a hidden flag.
+        """
+        return self.has_role(Role.ADMIN)
+
+    @property
+    def display_roles(self) -> list[str]:
+        held = self.role_names
+        return [Role(name).label for name in Role.values if name in held]
+
+
+class LoginAttempt(models.Model):
+    """Record of one authentication attempt, successful or not.
+
+    Backs the rate limiting and temporary lockout of specification sections 21.4 and
+    21.5. Kept separate from ``AuditEvent`` because it is queried on a hot path — every
+    login reads it — and because it is prunable operational data, whereas audit is not.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    # Text, not a foreign key: failed attempts against a username that does not exist are
+    # exactly the ones worth counting.
+    username = models.CharField(max_length=150, db_index=True)
+    successful = models.BooleanField()
+    source_ip = models.GenericIPAddressField(null=True, blank=True, db_index=True)
+    user_agent = models.CharField(max_length=512, blank=True)
+    occurred_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "accounts_login_attempt"
+        ordering = ["-occurred_at"]
+        default_permissions = ()
+        indexes = [
+            # The lockout query: recent failures for a username or an address.
+            models.Index(
+                fields=["username", "-occurred_at"],
+                name="login_username_recent_idx",
+                condition=models.Q(successful=False),
+            ),
+            models.Index(
+                fields=["source_ip", "-occurred_at"],
+                name="login_ip_recent_idx",
+                condition=models.Q(successful=False),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        outcome = "success" if self.successful else "failure"
+        return f"{self.username} {outcome} at {self.occurred_at:%Y-%m-%d %H:%M:%S}"
+
+    @classmethod
+    def recent_failures_for_username(cls, *, username: str, window: timedelta) -> int:
+        """Count recent failed attempts against one username, from any address.
+
+        Counting per username rather than per session means an attacker cannot evade the
+        limit by rotating source addresses against a single account.
+        """
+        return cls.objects.filter(
+            username=username,
+            successful=False,
+            occurred_at__gte=timezone.now() - window,
+        ).count()
+
+    @classmethod
+    def recent_failures_for_ip(cls, *, source_ip: str | None, window: timedelta) -> int:
+        """Count recent failed attempts from one address, against any username.
+
+        Catches password spraying, where each individual account stays below its own
+        threshold. This is counted separately from the per-username total and carries a
+        much higher limit on purpose: operators commonly share a source address behind
+        NAT or a VPN concentrator, so a limit low enough to be useful per account would
+        lock out an entire site the moment one person fat-fingered their password.
+        """
+        if not source_ip:
+            return 0
+        return cls.objects.filter(
+            source_ip=source_ip,
+            successful=False,
+            occurred_at__gte=timezone.now() - window,
+        ).count()

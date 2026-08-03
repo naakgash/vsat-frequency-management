@@ -1,0 +1,146 @@
+[project]
+name = "vsat-spectrum-allocation"
+version = "0.1.0"
+description = "VSAT spectrum planning, frequency allocation and operational tracking platform"
+requires-python = ">=3.12,<3.13"
+license = { text = "Proprietary" }
+
+dependencies = [
+    "Django>=5.2.7,<5.3",
+    "psycopg[binary]>=3.2.10,<4",
+    "gunicorn>=23.0.0,<24",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2,<9",
+    "pytest-django>=4.11.1,<5",
+    "hypothesis>=6.140.3,<7",
+    "ruff>=0.14.0,<0.15",
+    "mypy>=1.18.2,<2",
+    "django-stubs[compatible-mypy]>=5.2.7,<6",
+    "import-linter>=2.4,<3",
+]
+
+# ---------------------------------------------------------------------------
+# Ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # isort
+    "UP",        # pyupgrade
+    "B",         # bugbear
+    "DJ",        # flake8-django
+    "S",         # bandit
+    "C4",        # comprehensions
+    "RUF",
+]
+ignore = [
+    "S101",  # assert is the point of a test suite
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106"]
+# RUF012 wants ClassVar on mutable class attributes. Django's declarative style puts
+# lists and dicts directly on Meta and on form classes, django-stubs types them without
+# ClassVar, and annotating them would be non-idiomatic without catching a real bug.
+"**/models.py" = ["RUF012"]
+"**/forms.py" = ["RUF012"]
+# Settings modules use star imports by design so each environment overrides a shared base.
+"config/settings/*" = ["E402", "F403", "F405"]
+# RUF001 flags characters that look like ASCII but are not — a genuinely useful check for
+# an English-only product (section 1). This one file must contain Turkish text in order
+# to prove the language guard rail actually detects it.
+"tests/ui/test_language.py" = ["RUF001"]
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+# --ds is passed explicitly because pytest-django ranks the DJANGO_SETTINGS_MODULE
+# environment variable ABOVE the ini setting above. A developer with
+# DJANGO_SETTINGS_MODULE exported in their shell (from .env, say) would otherwise run
+# the whole suite against local — or production — settings without any indication.
+# The command-line option outranks both. tests/test_settings.py pins this.
+addopts = "--strict-markers -ra --ds=config.settings.test"
+filterwarnings = ["error::DeprecationWarning"]
+
+# ---------------------------------------------------------------------------
+# mypy — strict on the pure domain layer, pragmatic elsewhere
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["migrations/"]
+
+[[tool.mypy.overrides]]
+module = "calculations.*"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+# django-stubs types the generic class-based views as generic, but Django's real classes
+# define no __class_getitem__, so `ListView[User]` type-checks and then raises
+# TypeError at import time. The queryset methods carry explicit return types instead,
+# which is where the useful information actually is.
+module = "*.views"
+disable_error_code = ["type-arg"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+# ---------------------------------------------------------------------------
+# import-linter — enforces the module dependency direction of docs/design/01
+#
+# Contracts grow with each slice; only modules that exist are listed. See
+# docs/design/01-repository-structure.md section 1 for the full target graph.
+# ---------------------------------------------------------------------------
+[tool.importlinter]
+root_packages = ["config", "operations", "accounts", "audit"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "config is the composition root and nothing imports it"
+type = "forbidden"
+source_modules = ["operations", "accounts", "audit"]
+forbidden_modules = ["config"]
+
+[[tool.importlinter.contracts]]
+# audit sits at the bottom of the dependency graph: everything may record to it, and it
+# may reach nothing. Its only link to a user is AUTH_USER_MODEL, resolved as a string.
+name = "audit is the lowest layer and imports no other local module"
+type = "forbidden"
+source_modules = ["audit"]
+forbidden_modules = ["accounts", "operations"]
+
+[[tool.importlinter.contracts]]
+# accounts is cross-cutting: domain modules import it, never the reverse. This is why
+# object scope is a resolver registry rather than direct foreign keys to Beam, Hub and
+# Gateway — see accounts/scope.py.
+name = "accounts does not import domain modules"
+type = "forbidden"
+source_modules = ["accounts"]
+forbidden_modules = ["operations"]
+
+[[tool.importlinter.contracts]]
+name = "module layering"
+type = "layers"
+layers = ["operations", "accounts", "audit"]

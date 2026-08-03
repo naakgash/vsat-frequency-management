@@ -1,0 +1,37 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}VSAT Spectrum Allocation Platform{% endblock %}</title>
+  {# All assets are vendored. Specification section 19.4 rules out CDN-only dependencies. #}
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="bg-body-tertiary">
+  <a class="visually-hidden-focusable skip-link" href="#main-content">Skip to main content</a>
+
+  {% include "partials/nav.html" %}
+
+  <main id="main-content" class="container-fluid py-4">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="container-fluid py-3 text-body-secondary small border-top">
+    VSAT Spectrum Allocation Platform
+    <span aria-hidden="true">&middot;</span>
+    All frequencies are stored as exact integer Hz and displayed in UTC.
+  </footer>
+
+  <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
+  <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}" defer></script>
+  <script src="{% static 'js/csrf.js' %}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

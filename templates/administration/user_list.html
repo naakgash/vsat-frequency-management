@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Users &middot; Administration{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-1">Users</h1>
+<p class="text-body-secondary">
+  User accounts and their roles. Authorization scope for Beams, Hubs and Gateways is granted
+  on each user's detail page once inventory exists.
+</p>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <caption class="visually-hidden">List of user accounts with their roles and status</caption>
+    <thead>
+      <tr>
+        <th scope="col">Username</th>
+        <th scope="col">Full name</th>
+        <th scope="col">Email</th>
+        <th scope="col">Roles</th>
+        <th scope="col">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for account in users %}
+        <tr>
+          <td><a href="{{ account.get_absolute_url }}">{{ account.get_username }}</a></td>
+          <td>{{ account.full_name|default:"—" }}</td>
+          <td>{{ account.email }}</td>
+          <td>
+            {% for role in account.display_roles %}
+              <span class="badge text-bg-secondary">{{ role }}</span>
+            {% empty %}
+              <span class="text-body-secondary">No roles</span>
+            {% endfor %}
+          </td>
+          <td>
+            {% if account.is_active %}
+              <span class="badge text-bg-success">Active</span>
+            {% else %}
+              <span class="badge text-bg-warning">Inactive</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="5" class="text-center text-body-secondary py-4">
+            No user accounts exist yet.
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if is_paginated %}
+  <nav aria-label="User list pages">
+    <ul class="pagination">
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+      {% endif %}
+      <li class="page-item disabled">
+        <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      </li>
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+{% endif %}
+{% endblock %}

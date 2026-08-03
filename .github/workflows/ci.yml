@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "claude/**"]
+  pull_request:
+    branches: ["main"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Test-only credentials for a throwaway service container. Real secrets never appear
+  # in this file (specification section 21.8).
+  DJANGO_SECRET_KEY: ci-only-key-not-used-in-any-real-environment
+  POSTGRES_DB: vsat_dev
+  POSTGRES_USER: vsat
+  POSTGRES_PASSWORD: vsat_ci
+  POSTGRES_HOST: localhost
+  POSTGRES_PORT: "5432"
+
+jobs:
+  quality:
+    name: Static quality gates
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies from the lock file
+        run: uv sync --frozen --python 3.12
+
+      - name: Ruff lint
+        run: uv run ruff check --output-format=github .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Type check
+        run: uv run mypy config operations
+
+      - name: Module dependency direction
+        run: uv run lint-imports
+
+  test:
+    name: Tests (PostgreSQL 16)
+    runs-on: ubuntu-24.04
+
+    services:
+      postgres:
+        # The version the production target runs. The suite depends on exclusion
+        # constraints, int8range and btree_gist, so there is no SQLite alternative.
+        image: postgres:16-bookworm
+        env:
+          POSTGRES_DB: vsat_dev
+          POSTGRES_USER: vsat
+          POSTGRES_PASSWORD: vsat_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U vsat -d vsat_dev"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The terminology and language guard rails enumerate files through git.
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies from the lock file
+        run: uv sync --frozen --python 3.12
+
+      - name: Run tests
+        run: uv run pytest -v
+
+      - name: Verify migrations are complete and consistent
+        run: uv run python manage.py makemigrations --check --dry-run
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+
+  security:
+    name: Dependency and image scanning
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies from the lock file
+        run: uv sync --frozen --python 3.12
+
+      - name: Audit dependencies for known vulnerabilities
+        run: uvx pip-audit --strict --progress-spinner off
+
+      - name: Build the application image
+        run: docker build -f docker/Dockerfile -t vsat-spectrum:ci .
+
+      - name: Scan the image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: vsat-spectrum:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL

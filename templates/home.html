@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard &middot; VSAT Spectrum Allocation Platform{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12">
+    <h1 class="h3 mb-1">VSAT Spectrum Allocation Platform</h1>
+    <p class="text-body-secondary mb-0">
+      Spectrum planning, frequency allocation and operational tracking.
+    </p>
+  </div>
+
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h2 class="h5 card-title">Foundation slice</h2>
+        <p class="card-text mb-2">
+          The project foundation is in place: application configuration, PostgreSQL with the
+          required extensions, health endpoints, and the English interface shell.
+        </p>
+        <p class="card-text text-body-secondary mb-0">
+          The dashboard cards, spectrum map and allocation workflow arrive in later slices.
+          Navigation items are shown but disabled until the slice that delivers them.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Allocation hierarchy</h2>
+        <pre class="mb-0 small"><code>Satellite
+└── Beam                    Root spectrum pool
+    ├── Forward payload chain
+    ├── Return payload chain
+    └── Satnet              Operator-managed child container
+        ├── FWD Satnet Path
+        └── RTN Satnet Path</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">System health</h2>
+        <p class="card-text small mb-2">
+          Liveness and readiness endpoints are available for monitoring. Readiness verifies
+          both database connectivity and the PostgreSQL extensions the spectrum constraints
+          depend on.
+        </p>
+        <ul class="list-unstyled small mb-0">
+          <li><code>/health/live</code> &mdash; process is serving requests</li>
+          <li><code>/health/ready</code> &mdash; database and extensions are usable</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
