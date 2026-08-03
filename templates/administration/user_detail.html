@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}{{ subject.get_username }} &middot; Administration{% endblock %}
+
+{% block content %}
+<nav aria-label="Breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'administration:user-list' %}">Users</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ subject.get_username }}</li>
+  </ol>
+</nav>
+
+<h1 class="h3 mb-3">{{ subject.get_username }}</h1>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Account</h2>
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Full name</dt>
+          <dd class="col-sm-8">{{ subject.full_name|default:"—" }}</dd>
+          <dt class="col-sm-4">Email</dt>
+          <dd class="col-sm-8">{{ subject.email }}</dd>
+          <dt class="col-sm-4">Job title</dt>
+          <dd class="col-sm-8">{{ subject.job_title|default:"—" }}</dd>
+          <dt class="col-sm-4">Status</dt>
+          <dd class="col-sm-8">
+            {% if subject.is_active %}Active{% else %}Inactive{% endif %}
+          </dd>
+          <dt class="col-sm-4">Last sign-in</dt>
+          <dd class="col-sm-8">{{ subject.last_login|default:"Never" }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Roles</h2>
+        <p class="small text-body-secondary">
+          Roles are additive. A user may hold more than one.
+        </p>
+
+        <form method="post" action="{% url 'administration:user-assign-roles' user_id=subject.pk %}">
+          {% csrf_token %}
+
+          {% for error in role_form.roles.errors %}
+            <div class="alert alert-danger" role="alert">{{ error }}</div>
+          {% endfor %}
+
+          <fieldset class="mb-3">
+            <legend class="visually-hidden">Assign roles</legend>
+            {% for value, label in role_form.fields.roles.choices %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox"
+                       name="roles" value="{{ value }}" id="role-{{ value }}"
+                       {% if value in role_form.initial.roles %}checked{% endif %}>
+                <label class="form-check-label" for="role-{{ value }}">{{ label }}</label>
+              </div>
+            {% endfor %}
+          </fieldset>
+
+          <div class="mb-3">
+            <label for="id_reason" class="form-label">Change reason</label>
+            <input type="text" name="reason" id="id_reason" class="form-control"
+                   maxlength="500" placeholder="Why is this change being made?">
+            <div class="form-text">Recorded in the audit trail.</div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Save roles</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Authorization scope</h2>
+        <p class="card-text mb-0 text-body-secondary">
+          Beam, Hub and Gateway scope grants appear here once inventory exists. Until then,
+          non-administrator roles have no scoped objects to be granted.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

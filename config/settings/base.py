@@ -31,7 +31,9 @@ INSTALLED_APPS = [
     # spectrum reservation model depends on (docs/design/04).
     "django.contrib.postgres",
     # Local modules. Order follows the dependency direction in
-    # docs/design/01-repository-structure.md section 1.
+    # docs/design/01-repository-structure.md section 1: cross-cutting modules first.
+    "audit",
+    "accounts",
     "operations",
 ]
 
@@ -41,6 +43,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # After authentication so the actor is known, before anything that may audit.
+    "audit.middleware.RequestContextMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -95,6 +99,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # OQ-16 (local vs LDAP/AD) is unresolved. The backend list is the extension point;
 # local authentication is the only one implemented in the MVP.
 # ---------------------------------------------------------------------------
+AUTH_USER_MODEL = "accounts.User"
+
 AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -145,6 +151,20 @@ SECURE_REFERRER_POLICY = "same-origin"
 
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
+
+# --- Login rate limiting and temporary lockout (sections 21.4, 21.5) --------
+# Rolling window: the lockout expires as failures age out rather than requiring an
+# administrator to intervene, so a password-spray cannot become a denial of service
+# against real operators.
+# Two independent thresholds. Per username is strict, and stops a targeted attack
+# that rotates source addresses. Per source address is far looser, and stops password
+# spraying across many accounts; it must stay high because operators routinely share an
+# address behind NAT or a VPN concentrator, where a low limit would let one mistyped
+# password lock out an entire site.
+LOGIN_FAILURE_LIMIT = int(env.optional("LOGIN_FAILURE_LIMIT", "5"))
+LOGIN_IP_FAILURE_LIMIT = int(env.optional("LOGIN_IP_FAILURE_LIMIT", "50"))
+LOGIN_LOCKOUT_SECONDS = int(env.optional("LOGIN_LOCKOUT_SECONDS", "900"))
 
 # ---------------------------------------------------------------------------
 # Logging — structured, no stack traces to the user (section 21.14, 21.15)

@@ -95,6 +95,27 @@ def test_production_requires_an_explicit_allowed_hosts(monkeypatch):
         importlib.reload(production)
 
 
+def test_the_suite_runs_under_the_test_settings_module():
+    """The suite must not inherit whatever settings a developer's shell points at.
+
+    pytest-django ranks the ``DJANGO_SETTINGS_MODULE`` environment variable above the
+    ini setting, so an exported value — from a sourced .env, for instance — silently
+    redirects the entire suite. That is how a test run ends up exercising local or even
+    production settings while appearing perfectly green. ``--ds`` in ``addopts``
+    outranks both; this test is what stops that being quietly removed.
+    """
+    assert settings.SETTINGS_MODULE == "config.settings.test"
+
+
+def test_password_hashing_is_fast_in_tests():
+    """A slow hasher turns every authentication test into a half-second of CPU.
+
+    Also a canary: if the test settings module stops being applied, this is the first
+    thing to break, because the production hasher list is deliberately expensive.
+    """
+    assert settings.PASSWORD_HASHERS == ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+
 def test_the_database_backend_is_postgresql():
     """There is no SQLite path in this project; the constraints do not exist there."""
     assert settings.DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql"

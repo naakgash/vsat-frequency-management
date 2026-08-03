@@ -6,10 +6,10 @@ Replaces spreadsheet-based frequency planning with a controlled multi-user appli
 the hierarchy `Satellite → Beam → Satnet → Satnet Path`, with derived engineering values, guided
 operator workflows, and overlap prevention enforced at the UI, service and PostgreSQL layers.
 
-**Status:** Slice **S1 — Foundation** delivered. Application configuration, PostgreSQL 16 with the
-required extensions, health endpoints, the English interface shell and the CI guard rails are in
-place. No domain model yet; see the [slice plan](docs/design/05-vertical-slice-plan.md) for what
-lands when.
+**Status:** Slices **S1–S2** delivered. Application foundation, PostgreSQL 16 with the required
+extensions, health endpoints, the English interface shell, CI guard rails, and now authentication
+with four roles, a single backend authorization choke point and an append-only audit trail. No
+domain model yet; see the [slice plan](docs/design/05-vertical-slice-plan.md) for what lands when.
 
 **Source of truth:** `VSAT Spectrum Allocation Platform — Root Specification v1.0`.
 
@@ -42,6 +42,7 @@ make run
 | `make check` | Ruff, mypy and the module dependency contract |
 | `make test-db` | Database constraint tests only |
 | `make vendor` | Re-fetch vendored front-end assets |
+| `manage.py seed_demo` | Create the four demo accounts (local development only) |
 | `make help` | All targets |
 
 PostgreSQL is required — there is no SQLite path. Exclusion constraints, `int8range` and
@@ -66,11 +67,13 @@ exist in SQLite, so a green SQLite suite would prove nothing about the behaviour
 | Slice | Report | Acceptance criteria |
 |---|---|---|
 | S1 — Foundation and Health | [docs/slices/01-foundation.md](docs/slices/01-foundation.md) | §26.1, §26.5, §26.9 enforced by CI; §26.18 partial |
+| S2 — Identity, Roles and Audit | [docs/slices/02-identity-roles-audit.md](docs/slices/02-identity-roles-audit.md) | §26.16 mechanism; §26.17, §26.18 partial |
 
 ## Architecture decisions
 
 - [ADR-0001 — Modular monolith](docs/adr/0001-modular-monolith.md)
 - [ADR-0002 — Server-rendered Django with HTMX](docs/adr/0002-django-htmx-server-rendered.md)
+- [ADR-0013 — Append-only audit, enforced by the database](docs/adr/0013-append-only-audit.md)
 
 ## Before implementation starts
 

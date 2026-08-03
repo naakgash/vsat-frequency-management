@@ -28,16 +28,41 @@ Each becomes a real link in the slice named in its title attribute.
         <li class="nav-item"><span class="nav-link disabled" title="Delivered in slices S4 and S5">Inventory</span></li>
         <li class="nav-item"><span class="nav-link disabled" title="Delivered in slices S14 and S15">Imports &amp; Exports</span></li>
         <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S16">Audit</span></li>
-        <li class="nav-item"><span class="nav-link disabled" title="Delivered in slices S2 and S3">Administration</span></li>
+        {% comment %}
+        Hiding this link is presentation only. The views themselves enforce the
+        capability in the backend, and tests POST directly to them to prove it
+        (specification section 12).
+        {% endcomment %}
+        {% if perms.accounts.manage_users %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'administration:user-list' %}">Administration</a>
+          </li>
+        {% else %}
+          <li class="nav-item"><span class="nav-link disabled">Administration</span></li>
+        {% endif %}
       </ul>
 
-      <span class="navbar-text small">
+      <div class="d-flex align-items-center gap-3">
+        <span class="navbar-text small">
+          {% if user.is_authenticated %}
+            {{ user.get_username }}
+            {% for role in user.display_roles %}
+              <span class="badge text-bg-secondary">{{ role }}</span>
+            {% endfor %}
+          {% else %}
+            Not signed in
+          {% endif %}
+        </span>
+
         {% if user.is_authenticated %}
-          Signed in as {{ user.get_username }}
+          <form method="post" action="{% url 'accounts:logout' %}" class="m-0">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-secondary">Sign out</button>
+          </form>
         {% else %}
-          Not signed in
+          <a class="btn btn-sm btn-primary" href="{% url 'accounts:login' %}">Sign in</a>
         {% endif %}
-      </span>
+      </div>
     </div>
   </div>
 </nav>

@@ -48,6 +48,11 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S105", "S106"]
+# RUF012 wants ClassVar on mutable class attributes. Django's declarative style puts
+# lists and dicts directly on Meta and on form classes, django-stubs types them without
+# ClassVar, and annotating them would be non-idiomatic without catching a real bug.
+"**/models.py" = ["RUF012"]
+"**/forms.py" = ["RUF012"]
 # Settings modules use star imports by design so each environment overrides a shared base.
 "config/settings/*" = ["E402", "F403", "F405"]
 # RUF001 flags characters that look like ASCII but are not — a genuinely useful check for
@@ -62,7 +67,12 @@ ignore = [
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["test_*.py"]
 testpaths = ["tests"]
-addopts = "--strict-markers -ra"
+# --ds is passed explicitly because pytest-django ranks the DJANGO_SETTINGS_MODULE
+# environment variable ABOVE the ini setting above. A developer with
+# DJANGO_SETTINGS_MODULE exported in their shell (from .env, say) would otherwise run
+# the whole suite against local — or production — settings without any indication.
+# The command-line option outranks both. tests/test_settings.py pins this.
+addopts = "--strict-markers -ra --ds=config.settings.test"
 filterwarnings = ["error::DeprecationWarning"]
 
 # ---------------------------------------------------------------------------
@@ -86,6 +96,14 @@ strict = true
 module = "tests.*"
 disallow_untyped_defs = false
 
+[[tool.mypy.overrides]]
+# django-stubs types the generic class-based views as generic, but Django's real classes
+# define no __class_getitem__, so `ListView[User]` type-checks and then raises
+# TypeError at import time. The queryset methods carry explicit return types instead,
+# which is where the useful information actually is.
+module = "*.views"
+disable_error_code = ["type-arg"]
+
 [tool.django-stubs]
 django_settings_module = "config.settings.test"
 
@@ -96,11 +114,33 @@ django_settings_module = "config.settings.test"
 # docs/design/01-repository-structure.md section 1 for the full target graph.
 # ---------------------------------------------------------------------------
 [tool.importlinter]
-root_packages = ["config", "operations"]
+root_packages = ["config", "operations", "accounts", "audit"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "config is the composition root and nothing imports it"
 type = "forbidden"
-source_modules = ["operations"]
+source_modules = ["operations", "accounts", "audit"]
 forbidden_modules = ["config"]
+
+[[tool.importlinter.contracts]]
+# audit sits at the bottom of the dependency graph: everything may record to it, and it
+# may reach nothing. Its only link to a user is AUTH_USER_MODEL, resolved as a string.
+name = "audit is the lowest layer and imports no other local module"
+type = "forbidden"
+source_modules = ["audit"]
+forbidden_modules = ["accounts", "operations"]
+
+[[tool.importlinter.contracts]]
+# accounts is cross-cutting: domain modules import it, never the reverse. This is why
+# object scope is a resolver registry rather than direct foreign keys to Beam, Hub and
+# Gateway — see accounts/scope.py.
+name = "accounts does not import domain modules"
+type = "forbidden"
+source_modules = ["accounts"]
+forbidden_modules = ["operations"]
+
+[[tool.importlinter.contracts]]
+name = "module layering"
+type = "layers"
+layers = ["operations", "accounts", "audit"]

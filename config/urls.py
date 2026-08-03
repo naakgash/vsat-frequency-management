@@ -13,6 +13,8 @@ from operations import views as operations_views
 urlpatterns = [
     path("", operations_views.HomeView.as_view(), name="home"),
     path("health/", include("operations.urls")),
+    path("accounts/", include("accounts.urls")),
+    path("administration/", include("accounts.admin_urls")),
 ]
 
 handler403 = "operations.views.permission_denied"
