@@ -66,6 +66,17 @@ def require(user: Any, capability: str, obj: Any = None, *, reason: str = "") ->
         raise PermissionDenied("You do not have permission to perform this action.")
 
 
+def record_denial(user: Any, capability: str, obj: Any = None, *, detail: str = "") -> None:
+    """Record a denial that was raised somewhere other than :func:`require`.
+
+    Django's ``PermissionRequiredMixin`` refuses the request in ``dispatch()``, before any
+    service is reached, so a view protected only by the mixin would deny silently and
+    leave no trace. Specification section 18 requires denials to be recorded wherever they
+    happen, so the mixin routes through here — see ``accounts/mixins.py``.
+    """
+    _record_denial(user, capability, obj, detail=detail or "capability not held")
+
+
 def require_any(user: Any, capabilities: list[str], obj: Any = None) -> None:
     """Assert that ``user`` holds at least one of ``capabilities``.
 

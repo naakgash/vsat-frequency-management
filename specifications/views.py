@@ -9,19 +9,20 @@ from __future__ import annotations
 from typing import Any
 
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView, View
 
+from accounts.mixins import AuditedPermissionRequiredMixin
 from specifications import selectors, services
 from specifications.constants import CHANGE_SPECIFICATION, VIEW_SPECIFICATION
 from specifications.forms import SpecificationForm
 from specifications.models import SpecificationDefinition
 
 
-class SpecificationListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+class SpecificationListView(LoginRequiredMixin, AuditedPermissionRequiredMixin, ListView):
     """The central Specification Dictionary screen.
 
     Readable by every authenticated role — an Operator needs to look up what a code
@@ -45,7 +46,7 @@ class SpecificationListView(LoginRequiredMixin, PermissionRequiredMixin, ListVie
         return context
 
 
-class SpecificationDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+class SpecificationDetailView(LoginRequiredMixin, AuditedPermissionRequiredMixin, DetailView):
     """One specification in full."""
 
     permission_required = VIEW_SPECIFICATION
@@ -63,7 +64,7 @@ class SpecificationDetailView(LoginRequiredMixin, PermissionRequiredMixin, Detai
         return context
 
 
-class SpecificationUpdateView(LoginRequiredMixin, PermissionRequiredMixin, View):
+class SpecificationUpdateView(LoginRequiredMixin, AuditedPermissionRequiredMixin, View):
     """Edit a specification's presentation metadata."""
 
     permission_required = CHANGE_SPECIFICATION

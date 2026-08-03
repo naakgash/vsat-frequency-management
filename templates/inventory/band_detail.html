@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ object.code }} &middot; Bands{% endblock %}
+{% block content %}
+{% include "inventory/_detail_header.html" with entity="band" list_url="inventory:band-list" list_label="Bands" %}
+<div class="row g-4">
+  <div class="col-12 col-lg-7"><div class="card h-100"><div class="card-body">
+    <h2 class="h6 card-title text-uppercase text-body-secondary">Limits</h2>
+    <p class="small text-body-secondary">
+      These bounds are informative. Allocation permission is defined by Frequency Windows.
+    </p>
+    <dl class="row mb-0">
+      <dt class="col-sm-5">RF minimum</dt><dd class="col-sm-7 rf-value">{{ object.rf_min_hz|floatformat:0 }} Hz</dd>
+      <dt class="col-sm-5">RF maximum</dt><dd class="col-sm-7 rf-value">{{ object.rf_max_hz|floatformat:0 }} Hz</dd>
+      <dt class="col-sm-5">Display unit</dt><dd class="col-sm-7">{{ object.default_display_unit }}</dd>
+      <dt class="col-sm-5">Tuning raster</dt>
+      <dd class="col-sm-7">
+        {% if object.tuning_raster_hz %}<span class="rf-value">{{ object.tuning_raster_hz|floatformat:0 }} Hz</span>
+        {% else %}<span class="text-body-secondary">Unconfirmed (OQ-31)</span>{% endif %}
+      </dd>
+      <dt class="col-sm-5">Polarizations</dt>
+      <dd class="col-sm-7">
+        {% for polarization in object.allowed_polarizations.all %}
+          <span class="badge text-bg-light border">{{ polarization.get_polarization_display }}</span>
+        {% empty %}<span class="text-body-secondary">None confirmed (OQ-14)</span>{% endfor %}
+      </dd>
+    </dl>
+  </div></div></div>
+  <div class="col-12 col-lg-5">{% include "inventory/_dependency_summary.html" %}</div>
+</div>
+{% endblock %}

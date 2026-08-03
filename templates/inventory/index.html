@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Inventory{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Inventory</h1>
+<p class="text-body-secondary">
+  Master data, divided by whether an object can be created on its own or requires others
+  to exist first.
+</p>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-6">
+    <section class="card h-100">
+      <div class="card-header">
+        <h2 class="h6 mb-0">Independent Data</h2>
+        <span class="small text-body-secondary">
+          Can be created on their own, and are referenced by dependent objects.
+        </span>
+      </div>
+      <ul class="list-group list-group-flush">
+        {% for entry in independent %}
+          <li class="list-group-item d-flex justify-content-between align-items-start">
+            <span>
+              <a href="{% url entry.url_name %}" class="fw-semibold">{{ entry.label }}</a>
+              <span class="d-block small text-body-secondary">{{ entry.blurb }}</span>
+            </span>
+            <span class="badge text-bg-secondary rounded-pill">{{ entry.count }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <section class="card h-100">
+      <div class="card-header">
+        <h2 class="h6 mb-0">Dependent Data</h2>
+        <span class="small text-body-secondary">
+          Require one or more independent objects before they can be created.
+        </span>
+      </div>
+      <ul class="list-group list-group-flush">
+        {% for entry in dependent %}
+          <li class="list-group-item d-flex justify-content-between align-items-start">
+            <span>
+              <span class="fw-semibold text-body-secondary">{{ entry.label }}</span>
+              <span class="d-block small text-body-secondary">{{ entry.blurb }}</span>
+            </span>
+            <span class="badge text-bg-light border">Slice {{ entry.slice }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+</div>
+{% endblock %}

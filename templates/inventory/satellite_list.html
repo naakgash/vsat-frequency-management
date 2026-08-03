@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Satellites &middot; Inventory{% endblock %}
+{% block content %}
+{% include "inventory/_list_header.html" with title="Satellites" entity="satellite" blurb="Orbital assets that carry payloads. Independent data." %}
+<div class="table-responsive"><table class="table table-hover align-middle">
+  <caption class="visually-hidden">Satellites</caption>
+  <thead><tr>
+    <th scope="col">Code</th><th scope="col">Name</th><th scope="col">Operator</th>
+    <th scope="col">Orbit</th><th scope="col">Position</th><th scope="col">Status</th>
+  </tr></thead>
+  <tbody>
+    {% for object in objects %}
+      <tr>
+        <th scope="row" class="fw-normal"><a href="{{ object.get_absolute_url }}">{{ object.code }}</a></th>
+        <td>{{ object.name }}</td>
+        <td>{{ object.operator|default:"—" }}</td>
+        <td>{{ object.get_orbit_type_display }}</td>
+        <td>{{ object.orbital_position|default:"—" }}</td>
+        <td>{% include "inventory/_status_badge.html" %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="text-center text-body-secondary py-4">No satellites yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

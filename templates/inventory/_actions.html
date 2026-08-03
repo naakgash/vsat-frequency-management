@@ -1,0 +1,20 @@
+{% comment %}Edit and activation controls, shared by every inventory detail screen.{% endcomment %}
+{% if can_manage %}
+  <div class="d-flex gap-2 align-items-center">
+    <a class="btn btn-primary" href="{% url 'inventory:edit' entity=entity pk=object.pk %}">Edit</a>
+    {% if object.is_active %}
+      <form method="post" action="{% url 'inventory:activation' entity=entity pk=object.pk action='deactivate' %}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-warning"
+                {% if blocking %}disabled title="In use by {{ blocking|length }} dependent object type(s)"{% endif %}>
+          Deactivate
+        </button>
+      </form>
+    {% else %}
+      <form method="post" action="{% url 'inventory:activation' entity=entity pk=object.pk action='activate' %}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-success">Activate</button>
+      </form>
+    {% endif %}
+  </div>
+{% endif %}

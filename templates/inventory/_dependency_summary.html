@@ -1,0 +1,30 @@
+{% comment %}
+Dependency summary for an inventory detail screen (specification section 3.2).
+
+Zero counts are shown deliberately: "0 Beams" tells an administrator the object is safe to
+deactivate, whereas an omitted row is ambiguous between "none" and "not checked".
+{% endcomment %}
+<div class="card">
+  <div class="card-body">
+    <h2 class="h6 card-title text-uppercase text-body-secondary">Used by</h2>
+    {% if dependencies %}
+      <ul class="list-unstyled mb-0">
+        {% for dependency in dependencies %}
+          <li class="d-flex justify-content-between align-items-center py-1">
+            <span>
+              {{ dependency.summary }}
+              {% if dependency.count and dependency.blocks_deactivation %}
+                <span class="badge text-bg-warning">Blocks deactivation</span>
+              {% endif %}
+            </span>
+            {% if dependency.url %}<a class="small" href="{{ dependency.url }}">View</a>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="mb-0 text-body-secondary small">
+        Nothing depends on this record yet.
+      </p>
+    {% endif %}
+  </div>
+</div>

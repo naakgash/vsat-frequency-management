@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Hubs &middot; Inventory{% endblock %}
+{% block content %}
+{% include "inventory/_list_header.html" with title="Hubs" entity="hub" blurb="Baseband platform instances. Each Hub belongs to exactly one Gateway." %}
+<div class="table-responsive"><table class="table table-hover align-middle">
+  <caption class="visually-hidden">Hubs</caption>
+  <thead><tr>
+    <th scope="col">Code</th><th scope="col">Name</th><th scope="col">Gateway</th>
+    <th scope="col">Platform</th><th scope="col">Vendor</th><th scope="col">Status</th>
+  </tr></thead>
+  <tbody>
+    {% for object in objects %}
+      <tr>
+        <th scope="row" class="fw-normal"><a href="{{ object.get_absolute_url }}">{{ object.code }}</a></th>
+        <td>{{ object.name }}</td>
+        <td><a href="{{ object.gateway.get_absolute_url }}">{{ object.gateway.code }}</a></td>
+        <td>{{ object.platform|default:"—" }}</td>
+        <td>{{ object.vendor|default:"—" }}</td>
+        <td>{% include "inventory/_status_badge.html" %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="text-center text-body-secondary py-4">No hubs within your authorization scope.</td></tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

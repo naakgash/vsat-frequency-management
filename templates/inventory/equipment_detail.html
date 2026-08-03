@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ object.code }} &middot; Equipment Profiles{% endblock %}
+{% block content %}
+{% include "inventory/_detail_header.html" with entity="equipment" list_url="inventory:equipment-list" list_label="Equipment Profiles" %}
+<div class="row g-4">
+  <div class="col-12 col-lg-7"><div class="card h-100"><div class="card-body">
+    <h2 class="h6 card-title text-uppercase text-body-secondary">Conversion</h2>
+    <dl class="row mb-0">
+      <dt class="col-sm-5">Type</dt><dd class="col-sm-7">{{ object.get_type_display }}</dd>
+      <dt class="col-sm-5">Band</dt><dd class="col-sm-7"><a href="{{ object.band.get_absolute_url }}">{{ object.band.code }}</a></dd>
+      <dt class="col-sm-5">Vendor / model</dt><dd class="col-sm-7">{{ object.vendor|default:"—" }} {{ object.model }}</dd>
+      <dt class="col-sm-5">Method</dt><dd class="col-sm-7"><code>{{ object.get_conversion_method_display }}</code></dd>
+      <dt class="col-sm-5">Sideband</dt><dd class="col-sm-7">{{ object.get_sideband_display }}</dd>
+      <dt class="col-sm-5">LO</dt><dd class="col-sm-7 rf-value">{{ object.lo_hz|floatformat:0 }} Hz</dd>
+      <dt class="col-sm-5">RF range</dt><dd class="col-sm-7 rf-value">{{ object.rf_min_hz|floatformat:0 }} – {{ object.rf_max_hz|floatformat:0 }} Hz</dd>
+      <dt class="col-sm-5">IF range</dt><dd class="col-sm-7 rf-value">{{ object.if_min_hz|floatformat:0 }} – {{ object.if_max_hz|floatformat:0 }} Hz</dd>
+      <dt class="col-sm-5">Inverting</dt><dd class="col-sm-7">{% if object.is_inverting %}Yes{% else %}No{% endif %}</dd>
+      <dt class="col-sm-5">Priority</dt><dd class="col-sm-7">{{ object.priority }}</dd>
+      <dt class="col-sm-5">Label</dt><dd class="col-sm-7">{{ object.label|default:"—" }}</dd>
+      <dt class="col-sm-5">Version</dt><dd class="col-sm-7">{{ object.version_number }}</dd>
+    </dl>
+  </div></div></div>
+  <div class="col-12 col-lg-5">
+    {% include "inventory/_dependency_summary.html" %}
+    <div class="card mt-4"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">Applicability</h2>
+      <dl class="row mb-0">
+        <dt class="col-sm-5">Gateway</dt><dd class="col-sm-7">{{ object.gateway.code|default:"Any" }}</dd>
+        <dt class="col-sm-5">Hub</dt><dd class="col-sm-7">{{ object.hub.code|default:"Any" }}</dd>
+      </dl>
+    </div></div>
+  </div>
+</div>
+{% endblock %}
