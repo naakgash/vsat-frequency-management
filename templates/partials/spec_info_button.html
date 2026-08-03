@@ -1,0 +1,59 @@
+{% comment %}
+The single specification information component (specification section 2, acceptance
+criterion 26.3).
+
+Accessibility notes, because they are requirements rather than polish:
+
+* The trigger is a real <button>, so it is in the tab order and responds to Enter and
+  Space without any JavaScript key handling of our own.
+* aria-expanded reflects state; aria-controls points at the popover; the accessible name
+  names the specification, so a screen reader announces "About SYMBOL_RATE, button"
+  rather than a row of identical "info" buttons.
+* The popover content is real DOM content, present whether or not it is visible. It is
+  therefore reachable by assistive technology and by search-in-page, and it does not
+  depend on JavaScript having successfully fetched anything.
+* Nothing here is triggered by hover alone: section 2 requires it to be usable without
+  relying on hover, which rules out a tooltip.
+
+If a code has no dictionary entry, or an entry with nothing worth saying, no button is
+rendered at all. A button that opens an empty box teaches users to ignore the affordance.
+{% endcomment %}
+<span class="spec-code">
+  <span class="spec-code__label">{{ visible_label }}</span>
+  {% if definition and definition.has_popover_content %}
+    <button type="button"
+            class="spec-info"
+            aria-expanded="false"
+            aria-controls="{{ popover_id }}"
+            aria-label="About {{ definition.label }}"
+            data-spec-info>
+      <span aria-hidden="true">i</span>
+    </button>
+    <span class="spec-popover" id="{{ popover_id }}" role="note" hidden>
+      <span class="spec-popover__title">{{ definition.label }}</span>
+      <span class="spec-popover__code">{{ definition.code }}</span>
+
+      {% if definition.description %}
+        <span class="spec-popover__description">{{ definition.description }}</span>
+      {% endif %}
+
+      {% if definition.unit %}
+        <span class="spec-popover__row"><b>Unit:</b> {{ definition.unit }}</span>
+      {% endif %}
+
+      {% if definition.calculation_note %}
+        <span class="spec-popover__row"><b>Calculation:</b> {{ definition.calculation_note }}</span>
+      {% endif %}
+
+      {% if definition.source_reference %}
+        <span class="spec-popover__row"><b>Source:</b> {{ definition.source_reference }}</span>
+      {% endif %}
+
+      {% if definition.is_calculated %}
+        <span class="spec-popover__row spec-popover__calculated">
+          Calculated by the system and read-only.
+        </span>
+      {% endif %}
+    </span>
+  {% endif %}
+</span>

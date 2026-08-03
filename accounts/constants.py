@@ -38,6 +38,12 @@ MANAGE_SCOPES = "accounts.manage_scopes"
 VIEW_AUDIT = "audit.view_auditevent"
 VIEW_ALL_AUDIT = "audit.view_all_auditevent"
 
+# Capabilities belonging to modules above accounts in the dependency graph are named as
+# plain strings, never imported. That is what keeps accounts free of domain imports while
+# still holding the single seeded definition of what each role may do.
+VIEW_SPECIFICATION = "specifications.view_specificationdefinition"
+CHANGE_SPECIFICATION = "specifications.change_specificationdefinition"
+
 #: Capability -> roles that hold it. Seeded into the role groups by a data migration and
 #: asserted, cell by cell, by tests/permissions/test_matrix.py.
 CAPABILITY_MATRIX: dict[str, tuple[str, ...]] = {
@@ -45,4 +51,8 @@ CAPABILITY_MATRIX: dict[str, tuple[str, ...]] = {
     MANAGE_SCOPES: (Role.ADMIN,),
     VIEW_ALL_AUDIT: (Role.ADMIN,),
     VIEW_AUDIT: (Role.ADMIN, Role.OPERATOR, Role.APPROVER),
+    # Every role reads the dictionary — an Operator needs to look up what a code means.
+    # Only an administrator edits it (specification section 12, acceptance criterion 26.2).
+    VIEW_SPECIFICATION: (Role.ADMIN, Role.OPERATOR, Role.APPROVER, Role.OBSERVER),
+    CHANGE_SPECIFICATION: (Role.ADMIN,),
 }

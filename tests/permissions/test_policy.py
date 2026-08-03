@@ -110,7 +110,7 @@ def test_require_any_raises_when_none_match():
 
 
 @pytest.mark.django_db(transaction=True)
-def test_denial_audit_survives_when_the_service_authorises_first():
+def test_denial_audit_survives_when_the_service_authorises_first(seeded_roles):
     """Services must authorise *before* opening their transaction.
 
     ``policy.require`` writes the denial then raises. If the caller had already opened a

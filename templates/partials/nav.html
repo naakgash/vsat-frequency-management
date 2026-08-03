@@ -33,6 +33,12 @@ Each becomes a real link in the slice named in its title attribute.
         capability in the backend, and tests POST directly to them to prove it
         (specification section 12).
         {% endcomment %}
+        {% if perms.specifications.view_specificationdefinition %}
+          <li class="nav-item">
+            <a class="nav-link{% if request.resolver_match.app_name == 'specifications' %} active{% endif %}"
+               href="{% url 'specifications:list' %}">Specifications</a>
+          </li>
+        {% endif %}
         {% if perms.accounts.manage_users %}
           <li class="nav-item">
             <a class="nav-link" href="{% url 'administration:user-list' %}">Administration</a>

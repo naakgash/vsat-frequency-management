@@ -71,3 +71,31 @@ def tracked_files(*suffixes: str) -> list[Path]:
 def anonymous_client(client):
     """Django test client with no authenticated session."""
     return client
+
+
+@pytest.fixture
+def seeded_roles(db):
+    """Ensure the four role groups exist with their capabilities.
+
+    Migrations seed them, but ``django_db(transaction=True)`` flushes every table after
+    each test — including the migration-seeded rows. Without this a transactional test
+    that runs second finds no groups at all, so ``groups.set()`` silently assigns
+    nothing and an authorization test passes for entirely the wrong reason.
+    """
+    from django.apps import apps as django_apps
+
+    from accounts.seeding import apply_capability_matrix
+
+    apply_capability_matrix(django_apps)
+
+
+@pytest.fixture
+def seeded_dictionary(db):
+    """Ensure the Specification Dictionary is populated.
+
+    Same reason as :func:`seeded_roles`: an accessibility test against an empty
+    dictionary would render no information buttons and pass vacuously.
+    """
+    from specifications.migrations import _seed_helper
+
+    _seed_helper.ensure_seeded()
