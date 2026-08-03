@@ -20,6 +20,7 @@ dev = [
     "mypy>=1.18.2,<2",
     "django-stubs[compatible-mypy]>=5.2.7,<6",
     "import-linter>=2.4,<3",
+    "pytest-playwright>=0.7,<0.8",
 ]
 
 # ---------------------------------------------------------------------------
@@ -73,6 +74,9 @@ testpaths = ["tests"]
 # the whole suite against local — or production — settings without any indication.
 # The command-line option outranks both. tests/test_settings.py pins this.
 addopts = "--strict-markers -ra --ds=config.settings.test"
+markers = [
+    "browser: drives a real browser through Playwright; skipped when Chromium is absent",
+]
 filterwarnings = ["error::DeprecationWarning"]
 
 # ---------------------------------------------------------------------------
@@ -97,11 +101,14 @@ module = "tests.*"
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-# django-stubs types the generic class-based views as generic, but Django's real classes
-# define no __class_getitem__, so `ListView[User]` type-checks and then raises
-# TypeError at import time. The queryset methods carry explicit return types instead,
-# which is where the useful information actually is.
-module = "*.views"
+# django-stubs declares several Django base classes as generic — ListView, DetailView,
+# ModelForm — but the real classes define no __class_getitem__. Writing `ListView[User]`
+# therefore type-checks cleanly and then raises TypeError at import time, taking the whole
+# application down. Trusting mypy here produces working types and a broken program, so the
+# rule is switched off for the modules that subclass those bases; the methods carry
+# explicit return annotations instead, which is where the useful information is anyway.
+# tests/test_imports.py fails fast if a subscript ever creeps back in.
+module = ["*.views", "*.forms"]
 disable_error_code = ["type-arg"]
 
 [tool.django-stubs]
@@ -114,13 +121,13 @@ django_settings_module = "config.settings.test"
 # docs/design/01-repository-structure.md section 1 for the full target graph.
 # ---------------------------------------------------------------------------
 [tool.importlinter]
-root_packages = ["config", "operations", "accounts", "audit"]
+root_packages = ["config", "operations", "accounts", "audit", "specifications"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "config is the composition root and nothing imports it"
 type = "forbidden"
-source_modules = ["operations", "accounts", "audit"]
+source_modules = ["operations", "accounts", "audit", "specifications"]
 forbidden_modules = ["config"]
 
 [[tool.importlinter.contracts]]
@@ -129,7 +136,7 @@ forbidden_modules = ["config"]
 name = "audit is the lowest layer and imports no other local module"
 type = "forbidden"
 source_modules = ["audit"]
-forbidden_modules = ["accounts", "operations"]
+forbidden_modules = ["accounts", "operations", "specifications"]
 
 [[tool.importlinter.contracts]]
 # accounts is cross-cutting: domain modules import it, never the reverse. This is why
@@ -138,9 +145,9 @@ forbidden_modules = ["accounts", "operations"]
 name = "accounts does not import domain modules"
 type = "forbidden"
 source_modules = ["accounts"]
-forbidden_modules = ["operations"]
+forbidden_modules = ["operations", "specifications"]
 
 [[tool.importlinter.contracts]]
 name = "module layering"
 type = "layers"
-layers = ["operations", "accounts", "audit"]
+layers = ["operations", "specifications", "accounts", "audit"]

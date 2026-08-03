@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load spec_tags %}
+
+{% block title %}{{ definition.code }} &middot; Specification Dictionary{% endblock %}
+
+{% block content %}
+<nav aria-label="Breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'specifications:list' %}">Specification Dictionary</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ definition.code }}</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h1 class="h3 mb-1">{{ definition.display_name }}</h1>
+    <p class="mb-0"><code class="fs-6">{{ definition.code }}</code></p>
+  </div>
+  {% if can_edit %}
+    <a class="btn btn-primary" href="{% url 'specifications:edit' code=definition.code %}">Edit</a>
+  {% endif %}
+</div>
+
+{% if definition.needs_engineering_input %}
+  <div class="alert alert-warning" role="alert">
+    This specification has no description yet. It is awaiting RF engineering input; no
+    description has been invented on its behalf.
+  </div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-12 col-lg-7">
+    <div class="card h-100">
+      <div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Definition</h2>
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Description</dt>
+          <dd class="col-sm-8">{{ definition.description|default:"—" }}</dd>
+          <dt class="col-sm-4">Help text</dt>
+          <dd class="col-sm-8">{{ definition.help_text|default:"—" }}</dd>
+          <dt class="col-sm-4">Calculation</dt>
+          <dd class="col-sm-8">{{ definition.calculation_note|default:"—" }}</dd>
+          <dt class="col-sm-4">Source</dt>
+          <dd class="col-sm-8">{{ definition.source_reference|default:"—" }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-5">
+    <div class="card h-100">
+      <div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Presentation</h2>
+        <dl class="row mb-0">
+          <dt class="col-sm-6">Short name</dt>
+          <dd class="col-sm-6">{{ definition.short_name|default:"—" }}</dd>
+          <dt class="col-sm-6">Unit</dt>
+          <dd class="col-sm-6">{{ definition.unit|default:"—" }}</dd>
+          <dt class="col-sm-6">Display precision</dt>
+          <dd class="col-sm-6">{{ definition.display_precision }}</dd>
+          <dt class="col-sm-6">Category</dt>
+          <dd class="col-sm-6">{{ definition.category.name }}</dd>
+          <dt class="col-sm-6">Direction</dt>
+          <dd class="col-sm-6">{{ definition.get_direction_applicability_display }}</dd>
+          <dt class="col-sm-6">Data type</dt>
+          <dd class="col-sm-6">{{ definition.get_data_type_display }}</dd>
+          <dt class="col-sm-6">Calculated</dt>
+          <dd class="col-sm-6">{% if definition.is_calculated %}Yes, read-only{% else %}No{% endif %}</dd>
+          <dt class="col-sm-6">Code managed by</dt>
+          <dd class="col-sm-6">
+            {% if definition.is_system_managed %}Application logic{% else %}Administrator{% endif %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">How it appears</h2>
+        <p class="small text-body-secondary">
+          This is the component rendered wherever the code is shown. The information button
+          is keyboard operable.
+        </p>
+        <p class="mb-0">{% spec_code definition.code %}</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

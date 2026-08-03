@@ -21,3 +21,95 @@
 code {
   font-variant-numeric: tabular-nums;
 }
+
+/* --- Specification information component ---------------------------------
+ * Section 2: a very small information button beside a specification code, opening a
+ * compact popover. Never hover-only.
+ */
+.spec-code {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.spec-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1em;
+  height: 1.1em;
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+  color: var(--bs-secondary-color);
+  background: transparent;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.spec-info:hover,
+.spec-info:focus-visible {
+  color: var(--bs-body-color);
+  border-color: var(--bs-body-color);
+}
+
+/* A visible focus ring is what makes the control usable from the keyboard. */
+.spec-info:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+}
+
+.spec-popover {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 1070;
+  display: none;
+  width: max-content;
+  max-width: min(22rem, 90vw);
+  padding: 0.65rem 0.75rem;
+  white-space: normal;
+  font-weight: 400;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  text-align: left;
+  color: var(--bs-body-color);
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.spec-popover--open {
+  display: block;
+}
+
+.spec-popover > * {
+  display: block;
+}
+
+.spec-popover__title {
+  font-weight: 600;
+}
+
+.spec-popover__code {
+  margin-bottom: 0.35rem;
+  font-family: var(--bs-font-monospace);
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+}
+
+.spec-popover__row,
+.spec-popover__description {
+  margin-top: 0.35rem;
+}
+
+.spec-popover__calculated {
+  color: var(--bs-secondary-color);
+  font-style: italic;
+}

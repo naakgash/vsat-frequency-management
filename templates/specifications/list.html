@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load spec_tags %}
+
+{% block title %}Specification Dictionary{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-1">Specification Dictionary</h1>
+<p class="text-body-secondary">
+  Display metadata for every technical field shown in the application. Editing a
+  description here changes it everywhere the code appears; descriptions are never written
+  into individual screens.
+</p>
+
+{% if incomplete %}
+  <div class="alert alert-warning" role="alert">
+    <strong>{{ incomplete|length }} specification{{ incomplete|pluralize }} awaiting engineering input.</strong>
+    These have no description yet. They are shown with their code only until RF engineering
+    supplies one; no description has been invented on their behalf.
+    <ul class="mb-0 mt-2">
+      {% for definition in incomplete %}
+        <li><a href="{{ definition.get_absolute_url }}"><code>{{ definition.code }}</code></a></li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+{% for category, definitions in grouped %}
+  <section class="card mb-4">
+    <div class="card-header">
+      <h2 class="h6 mb-0">{{ category.name }}</h2>
+      {% if category.description %}
+        <span class="small text-body-secondary">{{ category.description }}</span>
+      {% endif %}
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0">
+        <caption class="visually-hidden">Specifications in the {{ category.name }} category</caption>
+        <thead>
+          <tr>
+            <th scope="col">Code</th>
+            <th scope="col">Display name</th>
+            <th scope="col">Unit</th>
+            <th scope="col" class="text-end">Precision</th>
+            <th scope="col">Direction</th>
+            <th scope="col">Visibility</th>
+            <th scope="col">Status</th>
+            {% if can_edit %}<th scope="col"><span class="visually-hidden">Actions</span></th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for definition in definitions %}
+            <tr>
+              <th scope="row" class="fw-normal">
+                {% spec_code definition.code %}
+              </th>
+              <td>
+                <a href="{{ definition.get_absolute_url }}">{{ definition.display_name }}</a>
+                {% if definition.is_calculated %}
+                  <span class="badge text-bg-light border">Calculated</span>
+                {% endif %}
+              </td>
+              <td>{{ definition.unit|default:"—" }}</td>
+              <td class="text-end">{{ definition.display_precision }}</td>
+              <td>{{ definition.get_direction_applicability_display }}</td>
+              <td class="small text-body-secondary">
+                {% if definition.visible_in_tables %}Tables{% endif %}
+                {% if definition.visible_in_forms %}{% if definition.visible_in_tables %}, {% endif %}Forms{% endif %}
+                {% if definition.visible_in_detail %}{% if definition.visible_in_tables or definition.visible_in_forms %}, {% endif %}Detail{% endif %}
+                {% if not definition.visible_in_tables and not definition.visible_in_forms and not definition.visible_in_detail %}Hidden{% endif %}
+              </td>
+              <td>
+                {% if definition.needs_engineering_input %}
+                  <span class="badge text-bg-warning">No description</span>
+                {% elif definition.is_active %}
+                  <span class="badge text-bg-success">Active</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">Inactive</span>
+                {% endif %}
+              </td>
+              {% if can_edit %}
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-secondary"
+                     href="{% url 'specifications:edit' code=definition.code %}">Edit</a>
+                </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% empty %}
+  <div class="card"><div class="card-body text-center text-body-secondary py-5">
+    The dictionary is empty. Run <code>manage.py migrate</code> to seed it.
+  </div></div>
+{% endfor %}
+{% endblock %}
