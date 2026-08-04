@@ -89,6 +89,13 @@ types:  ## Type check
 imports:  ## Enforce the module dependency direction of docs/design/01
 	$(LINT_IMPORTS)
 
+.PHONY: intake
+intake:  ## Regenerate the S0 RF confirmation sheets from the models
+	# The sheets carry the exact columns the S15 importer will expect, so they are
+	# generated rather than maintained by hand. tests/rf_confirmation fails if the
+	# committed package and the models have parted, which is the reminder to run this.
+	$(PYTHON) manage.py export_intake_templates
+
 .PHONY: test
 test:  ## Run the test suite against real PostgreSQL
 	$(PYTEST)
