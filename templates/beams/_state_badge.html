@@ -1,0 +1,8 @@
+{% comment %}Configuration state, from `state` (a ConfigurationState value).{% endcomment %}
+{% if state == "VALID" %}
+  <span class="badge text-bg-success">Valid</span>
+{% elif state == "INVALID" %}
+  <span class="badge text-bg-danger">Invalid</span>
+{% else %}
+  <span class="badge text-bg-secondary">Incomplete</span>
+{% endif %}

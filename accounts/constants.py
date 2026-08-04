@@ -54,6 +54,9 @@ VIEW_FREQUENCY_WINDOW = "inventory.view_frequencywindow"
 VIEW_PAYLOAD_PATH = "inventory.view_payloadpath"
 MANAGE_INVENTORY = "inventory.manage_inventory"
 
+VIEW_BEAM = "beams.view_beam"
+MANAGE_BEAMS = "beams.manage_beams"
+
 #: Read access to inventory is uniform across the five entities.
 _ALL_ROLES = (Role.ADMIN, Role.OPERATOR, Role.APPROVER, Role.OBSERVER)
 
@@ -80,4 +83,10 @@ CAPABILITY_MATRIX: dict[str, tuple[str, ...]] = {
     VIEW_FREQUENCY_WINDOW: _ALL_ROLES,
     VIEW_PAYLOAD_PATH: _ALL_ROLES,
     MANAGE_INVENTORY: (Role.ADMIN,),
+    # An Operator picks a Beam when creating a Satnet Path, so every role reads them.
+    # Beam *engineering* is administrator-only (specification section 25): the builder
+    # decides what spectrum exists, and getting it wrong is not an operator-recoverable
+    # mistake.
+    VIEW_BEAM: _ALL_ROLES,
+    MANAGE_BEAMS: (Role.ADMIN,),
 }

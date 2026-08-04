@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ beam.code }} &middot; Beams{% endblock %}
+{% block content %}
+<nav aria-label="Breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'beams:list' %}">Beams</a></li>
+  <li class="breadcrumb-item active" aria-current="page">{{ beam.code }}</li>
+</ol></nav>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h1 class="h3 mb-1">{{ beam.name }}</h1>
+    <p class="mb-0">
+      <code class="fs-6">{{ beam.code }}</code>
+      {% include "beams/_state_badge.html" with state=report.state %}
+      {% if beam.is_active %}
+        <span class="badge text-bg-success">Active</span>
+      {% else %}
+        <span class="badge text-bg-secondary">Inactive</span>
+      {% endif %}
+    </p>
+  </div>
+  {% if can_manage %}
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-primary" href="{% url 'beams:builder-direction' pk=beam.pk direction='FWD' %}">Edit chains</a>
+      <a class="btn btn-primary" href="{% url 'beams:builder-activate' pk=beam.pk %}">
+        {% if beam.is_active %}Deactivate{% else %}Activate{% endif %}
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-8">
+    {% for config in configs %}
+      <div class="card mb-3"><div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">
+          {{ config.get_direction_display }} chain
+        </h2>
+        {% include "beams/_chain_diagram.html" %}
+      </div></div>
+    {% endfor %}
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">Identity</h2>
+      <dl class="row mb-0">
+        <dt class="col-sm-5">Satellite</dt>
+        <dd class="col-sm-7"><a href="{{ beam.satellite.get_absolute_url }}">{{ beam.satellite.code }}</a></dd>
+        <dt class="col-sm-5">Band</dt>
+        <dd class="col-sm-7"><a href="{{ beam.band.get_absolute_url }}">{{ beam.band.code }}</a></dd>
+        <dt class="col-sm-5">Coverage</dt><dd class="col-sm-7">{{ beam.coverage|default:"—" }}</dd>
+        <dt class="col-sm-5">Description</dt><dd class="col-sm-7">{{ beam.description|default:"—" }}</dd>
+        <dt class="col-sm-5">Activated</dt>
+        <dd class="col-sm-7">
+          {% if beam.activated_at %}
+            {{ beam.activated_at|date:"Y-m-d H:i" }}
+            {% if beam.activated_by %}by {{ beam.activated_by.get_username }}{% endif %}
+          {% else %}Never{% endif %}
+        </dd>
+      </dl>
+    </div></div>
+
+    <div class="card"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">
+        Configuration validation state
+      </h2>
+      <p class="small text-body-secondary">
+        Re-run now, not read from a cache — the windows and payload paths underneath a Beam
+        can be superseded after it was last checked.
+      </p>
+      {% include "beams/_findings.html" %}
+      {% if latest_validation %}
+        <p class="small text-body-secondary mt-3 mb-0">
+          Last recorded run: {{ latest_validation.outcome }} on
+          {{ latest_validation.ran_at|date:"Y-m-d H:i" }}
+          {% if latest_validation.ran_by %}by {{ latest_validation.ran_by.get_username }}{% endif %}.
+        </p>
+      {% endif %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}

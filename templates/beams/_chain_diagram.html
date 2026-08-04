@@ -1,0 +1,73 @@
+{% comment %}
+One direction's chain, drawn as text. Specification section 5.
+
+Text rather than a graphic on purpose: the chain is five labelled boxes and two arrows, and
+every value in it is a code an administrator can read and search for. An SVG would look
+better and be unreadable to a screen reader without duplicating all of it in a label.
+
+Renders from a BeamDirectionConfig as `config`.
+{% endcomment %}
+{% load rf %}
+<div class="chain" role="group" aria-label="{{ config.direction }} chain">
+  {% if not config.is_enabled %}
+    <p class="mb-0 text-body-secondary">
+      <span class="badge text-bg-secondary">Disabled</span>
+      This direction carries no traffic. That is a configuration, not an omission
+      (section 5.4).
+    </p>
+  {% elif not config.is_configured %}
+    <p class="mb-0 text-body-secondary">
+      <span class="badge text-bg-warning">Incomplete</span>
+      No payload path is chosen yet.
+    </p>
+  {% else %}
+    <ol class="list-unstyled d-flex flex-wrap align-items-stretch gap-2 mb-0">
+      <li class="border rounded p-2 flex-fill">
+        <span class="d-block small text-body-secondary text-uppercase">Uplink window</span>
+        <a href="{{ config.uplink_window.get_absolute_url }}">{{ config.uplink_window.code }}</a>
+        <span class="d-block small">{{ config.uplink_window.get_side_display }}</span>
+        <span class="d-block small rf-value">
+          {{ config.uplink_window.rf_start_hz|mhz }} – {{ config.uplink_window.rf_end_hz|mhz }} MHz
+        </span>
+        <span class="d-block small">{{ config.uplink_polarization|default:"—" }}</span>
+      </li>
+      <li class="align-self-center px-1" aria-hidden="true">&rarr;</li>
+      <li class="border rounded p-2 flex-fill">
+        <span class="d-block small text-body-secondary text-uppercase">Payload path</span>
+        <a href="{{ config.payload_path.get_absolute_url }}">{{ config.payload_path.code }}</a>
+        <span class="d-block small"><code>{{ config.payload_path.get_translation_method_display }}</code></span>
+        <span class="d-block small rf-value">{{ config.payload_path.translation_constant_hz|mhz }} MHz</span>
+        {% if config.inverts %}
+          <span class="badge text-bg-warning">Inverting</span>
+        {% endif %}
+      </li>
+      <li class="align-self-center px-1" aria-hidden="true">&rarr;</li>
+      <li class="border rounded p-2 flex-fill">
+        <span class="d-block small text-body-secondary text-uppercase">Downlink window</span>
+        <a href="{{ config.downlink_window.get_absolute_url }}">{{ config.downlink_window.code }}</a>
+        <span class="d-block small">{{ config.downlink_window.get_side_display }}</span>
+        <span class="d-block small rf-value">
+          {{ config.downlink_window.rf_start_hz|mhz }} – {{ config.downlink_window.rf_end_hz|mhz }} MHz
+        </span>
+        <span class="d-block small">{{ config.downlink_polarization|default:"—" }}</span>
+      </li>
+      <li class="align-self-center px-1" aria-hidden="true">&rarr;</li>
+      <li class="border rounded p-2 flex-fill">
+        <span class="d-block small text-body-secondary text-uppercase">Equipment pool</span>
+        {% for entry in config.equipment_profiles.all %}
+          <span class="d-block small">
+            <a href="{{ entry.equipment_profile.get_absolute_url }}">{{ entry.equipment_profile.code }}</a>
+            <span class="text-body-secondary">@{{ entry.priority }}</span>
+          </span>
+        {% empty %}
+          <span class="d-block small text-body-secondary">None listed (OQ-04)</span>
+        {% endfor %}
+      </li>
+    </ol>
+    <p class="small text-body-secondary mt-2 mb-0">
+      The operator enters the centre frequency on the
+      <strong>{{ config.get_canonical_leg_display|default:"unset" }}</strong> leg; the other
+      side is derived through the payload path (A-07).
+    </p>
+  {% endif %}
+</div>

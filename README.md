@@ -6,15 +6,17 @@ Replaces spreadsheet-based frequency planning with a controlled multi-user appli
 the hierarchy `Satellite → Beam → Satnet → Satnet Path`, with derived engineering values, guided
 operator workflows, and overlap prevention enforced at the UI, service and PostgreSQL layers.
 
-**Status:** Slices **S1–S7** delivered. Application foundation, PostgreSQL 16 with the required
+**Status:** Slices **S1–S8** delivered. Application foundation, PostgreSQL 16 with the required
 extensions, health endpoints, the English interface shell, CI guard rails, authentication with four
 roles behind a single backend authorization choke point, an append-only audit trail, the
 admin-managed Specification Dictionary with its accessible information popover, the independent
 inventory entities with object-level scope, and dependent inventory — Frequency Windows and Payload
 Paths as effective-dated master data that is superseded rather than overwritten, and the pure
 calculation engine — bandwidth, edges, guards, payload translation, RF/IF conversion and equipment
-matching — with an Engineering Preview screen that exercises it end to end. The Beam Builder begins
-at S8; see the [slice plan](docs/design/05-vertical-slice-plan.md) for what lands when.
+matching — with an Engineering Preview screen that exercises it end to end, and the Beam Builder:
+the root spectrum pool, its two direction chains, and an activation that is refused while an enabled
+direction is invalid. Reservations and the exclusion constraints begin at S9, which is **gated on
+OQ-25, OQ-26 and OQ-27**; see the [slice plan](docs/design/05-vertical-slice-plan.md).
 
 The inventory ships **empty** — no satellite, band, window, translation, polarization mapping or
 guard value. Every value it would hold is an unresolved RF engineering question, and a
@@ -83,12 +85,14 @@ exist in SQLite, so a green SQLite suite would prove nothing about the behaviour
 | S5 — Dependent Inventory and Versioning | [docs/slices/05-dependent-inventory.md](docs/slices/05-dependent-inventory.md) | §26.4 extended; §26.15, §26.17 advanced; §26.20 enforced by test |
 | S6 — Calculation Engine | [docs/slices/06-calculation-engine.md](docs/slices/06-calculation-engine.md) | §26.10 partial; §26.16 met for bandwidth, edges and guards |
 | S7 — Translation, IF and Equipment | [docs/slices/07-translation-conversion-matching.md](docs/slices/07-translation-conversion-matching.md) | §26.10, §26.12 met for the calculation half; §26.20 gated on OQ-22 |
+| S8 — Beam and Beam Builder | [docs/slices/08-beam-builder.md](docs/slices/08-beam-builder.md) | §26.6, §26.7 met; §26.20 enforced by test |
 
 ## Architecture decisions
 
 - [ADR-0001 — Modular monolith](docs/adr/0001-modular-monolith.md)
 - [ADR-0002 — Server-rendered Django with HTMX](docs/adr/0002-django-htmx-server-rendered.md)
 - [ADR-0003 — Integer Hz and Decimal roll-off](docs/adr/0003-integer-hz-and-decimal-rolloff.md)
+- [ADR-0004 — The Beam is the root pool, and each direction is a child row](docs/adr/0004-beam-root-pool.md)
 - [ADR-0006 — A Satnet Path reserves both sides, and one is the image of the other](docs/adr/0006-two-sided-reservations.md)
 - [ADR-0008 — Half-open ranges, including through spectral inversion](docs/adr/0008-half-open-ranges.md)
 - [ADR-0010 — One calculation engine, and it is pure](docs/adr/0010-central-calculation-engine.md)
@@ -99,8 +103,8 @@ exist in SQLite, so a green SQLite suite would prove nothing about the behaviour
 
 ## Before implementation starts
 
-Three questions can change the database schema and should be answered before slice **S9**
-(reservations and exclusion constraints):
+Three questions can change the database schema and **must** be answered before slice **S9**
+(reservations and exclusion constraints). S8 was the last slice that could proceed without them:
 
 - **OQ-25** — is frequency reuse permitted between two Beams sharing the same Gateway/Hub uplink
   Frequency Window?

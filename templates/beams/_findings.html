@@ -1,0 +1,41 @@
+{% comment %}
+Validation findings for a Beam. Renders from `report`.
+
+Errors first, then warnings — an administrator needs the blocking list before the advisory
+one, and mixing them buries the thing that stops activation.
+{% endcomment %}
+{% if report.blocking %}
+  <h3 class="h6 text-danger">Blocking ({{ report.blocking|length }})</h3>
+  <ul class="list-unstyled mb-3">
+    {% for finding in report.blocking %}
+      <li class="mb-2">
+        <span class="badge text-bg-danger">{{ finding.direction|default:"Beam" }}</span>
+        <code class="small">{{ finding.code }}</code>
+        <span class="d-block small">{{ finding.message }}</span>
+        {% if finding.reference %}
+          <span class="d-block small text-body-secondary">{{ finding.reference }}</span>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+{% if report.warnings %}
+  <h3 class="h6">Advisory ({{ report.warnings|length }})</h3>
+  <ul class="list-unstyled mb-0">
+    {% for finding in report.warnings %}
+      <li class="mb-2">
+        <span class="badge text-bg-warning">{{ finding.direction|default:"Beam" }}</span>
+        <code class="small">{{ finding.code }}</code>
+        <span class="d-block small">{{ finding.message }}</span>
+        {% if finding.reference %}
+          <span class="d-block small text-body-secondary">{{ finding.reference }}</span>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+{% if not report.findings %}
+  <p class="mb-0 text-body-secondary">Every rule passes.</p>
+{% endif %}

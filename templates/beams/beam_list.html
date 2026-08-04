@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Beams{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h1 class="h3 mb-1">Beams</h1>
+    <p class="text-body-secondary mb-0">
+      The root spectrum pool (section 5). Every Satnet and every allocation sits inside one.
+    </p>
+  </div>
+  {% if can_manage %}
+    <a class="btn btn-primary" href="{% url 'beams:builder-create' %}">Build a Beam</a>
+  {% endif %}
+</div>
+
+<div class="table-responsive"><table class="table table-hover align-middle">
+  <caption class="visually-hidden">Beams</caption>
+  <thead><tr>
+    <th scope="col">Code</th><th scope="col">Name</th>
+    <th scope="col">Satellite</th><th scope="col">Band</th>
+    <th scope="col">Coverage</th>
+    <th scope="col" class="text-end">Enabled directions</th>
+    <th scope="col">Configuration</th><th scope="col">Status</th>
+  </tr></thead>
+  <tbody>
+    {% for object in objects %}
+      <tr>
+        <th scope="row" class="fw-normal"><a href="{{ object.get_absolute_url }}">{{ object.code }}</a></th>
+        <td>{{ object.name }}</td>
+        <td>{{ object.satellite.code }}</td>
+        <td>{{ object.band.code }}</td>
+        <td>{{ object.coverage|default:"—" }}</td>
+        <td class="text-end">{{ object.enabled_direction_count }}</td>
+        <td>{% include "beams/_state_badge.html" with state=object.configuration_state %}</td>
+        <td>
+          {% if object.is_active %}
+            <span class="badge text-bg-success">Active</span>
+          {% else %}
+            <span class="badge text-bg-secondary">Inactive</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="8" class="text-center text-body-secondary py-4">
+        No Beams yet. A Beam needs a Satellite, a Band and a Payload Path to exist first.
+      </td></tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+<p class="small text-body-secondary">
+  The configuration state is the cached result of the last validation. A Beam's detail page
+  re-runs the rules live, because the master data underneath it can be superseded.
+</p>
+{% endblock %}

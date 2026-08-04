@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ beam.code }} &middot; Validation{% endblock %}
+{% block content %}
+<nav aria-label="Breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'beams:list' %}">Beams</a></li>
+  <li class="breadcrumb-item"><a href="{{ beam.get_absolute_url }}">{{ beam.code }}</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Validation</li>
+</ol></nav>
+
+<h1 class="h3 mb-1">{{ beam.code }} — validation</h1>
+<p class="text-body-secondary">
+  Every rule that decides whether this Beam can be activated (section 26.6), with the reason
+  and the section behind each one.
+</p>
+{% include "beams/builder/_steps.html" %}
+
+<div class="row g-4">
+  <div class="col-12 col-lg-7">
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">
+        Result {% include "beams/_state_badge.html" with state=report.state %}
+      </h2>
+      {% include "beams/_findings.html" %}
+    </div></div>
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="reason" value="Beam Builder validation run">
+      <button type="submit" class="btn btn-outline-primary">Re-run and record</button>
+      {% if report.is_activatable %}
+        <a class="btn btn-primary" href="{% url 'beams:builder-activate' pk=beam.pk %}">Continue to activation</a>
+      {% else %}
+        <button type="button" class="btn btn-primary" disabled
+                title="Activation is refused while any enabled direction is invalid">
+          Continue to activation
+        </button>
+      {% endif %}
+    </form>
+    {% if not report.is_activatable %}
+      <p class="small text-body-secondary mt-2 mb-0">
+        The button above is disabled for convenience only. The refusal is enforced in the
+        service and by a database constraint — posting to the activation URL directly is
+        refused too.
+      </p>
+    {% endif %}
+  </div>
+
+  <div class="col-12 col-lg-5">
+    {% for config in configs %}
+      <div class="card mb-3"><div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">{{ config.direction }}</h2>
+        {% include "beams/_chain_diagram.html" %}
+      </div></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

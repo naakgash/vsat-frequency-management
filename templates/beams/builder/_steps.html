@@ -1,0 +1,18 @@
+{% comment %}
+The wizard's progress indicator. Rendered from beams.forms.WIZARD_STEPS so it cannot
+disagree with the views about how many steps there are.
+{% endcomment %}
+<nav aria-label="Beam Builder progress" class="mb-4">
+  <ol class="list-unstyled d-flex flex-wrap gap-3 mb-0">
+    {% for number, title, blurb in steps %}
+      <li class="flex-fill border-bottom border-3 pb-2
+                 {% if number == current_step %}border-primary{% else %}border-light{% endif %}">
+        <span class="small text-body-secondary">Step {{ number }}</span>
+        <span class="d-block fw-semibold{% if number == current_step %} text-primary{% endif %}">
+          {{ title }}
+        </span>
+        <span class="d-block small text-body-secondary">{{ blurb }}</span>
+      </li>
+    {% endfor %}
+  </ol>
+</nav>

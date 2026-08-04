@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "calculations",
     "specifications",
     "inventory",
+    "beams",
     "operations",
 ]
 
