@@ -39,6 +39,8 @@
         </h2>
         {% include "beams/_chain_diagram.html" %}
         {% include "beams/_spectrum_panel.html" %}
+        <a class="btn btn-sm btn-outline-primary mt-2"
+           href="{% url 'spectrum:beam' pk=beam.pk %}">View spectrum and free capacity</a>
       </div></div>
     {% endfor %}
   </div>
