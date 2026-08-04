@@ -9,10 +9,14 @@ way out — and both use this module. A second implementation somewhere else is 
 rounding rule drifts, and a frequency that is 1 Hz out is a frequency that fails an
 exclusion constraint for reasons nobody can see.
 
+It lives in ``calculations`` rather than in ``inventory`` because it is the lowest thing
+in the engineering path: the forms, the display filters and the engine all need it, and
+``calculations`` is the only module every one of them may import.
+
 ``specifications.templatetags.spec_tags`` performs its own conversion and is not a
 duplicate of this one: it converts according to the unit an administrator recorded in the
-Specification Dictionary, whereas this module converts a known-Hz column. They also cannot
-share code — ``specifications`` sits below ``inventory`` in the module layering.
+Specification Dictionary, whereas this module converts a column that is Hz by construction.
+``tests/domain/test_units.py`` compares the two so they cannot drift.
 """
 
 from __future__ import annotations

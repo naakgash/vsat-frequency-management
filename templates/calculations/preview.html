@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% load rf %}
+{% block title %}Engineering Preview{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Engineering Preview</h1>
+<p class="text-body-secondary">
+  Exercise the calculation engine directly. Nothing here is saved, nothing is read from the
+  database, and no allocation is made — this is the arithmetic on its own, so it can be
+  checked against RF engineering's own figures before any Beam or Satnet Path exists.
+</p>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-5">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% for error in form.non_field_errors %}
+        <div class="alert alert-danger" role="alert">{{ error }}</div>
+      {% endfor %}
+
+      <div class="card mb-3"><div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Transmission</h2>
+        {% for field in form %}{% if field.name in "entry_mode,symbol_rate_sps,occupied_bandwidth_hz,rolloff,centre_hz" %}
+          <div class="mb-3">
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        {% endif %}{% endfor %}
+      </div></div>
+
+      <div class="card mb-3"><div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Guard policy</h2>
+        <p class="small text-body-secondary">
+          Optional. No widths are supplied by the platform — guard values by band, window
+          and platform are an open question (OQ-07), so an unset policy means no guard
+          rather than a plausible one.
+        </p>
+        {% for field in form %}{% if field.name in "guard_mode,guard_fixed_left_hz,guard_fixed_right_hz,guard_percent_left,guard_percent_right" %}
+          <div class="mb-3">
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        {% endif %}{% endfor %}
+      </div></div>
+
+      <div class="card mb-3"><div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Frequency Window</h2>
+        <p class="small text-body-secondary">
+          Optional. Supply both edges to check containment — a Window is what grants
+          permission to allocate (section 13.6).
+        </p>
+        {% for field in form %}{% if field.name in "window_start_hz,window_end_hz,min_edge_guard_hz" %}
+          <div class="mb-3">
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        {% endif %}{% endfor %}
+      </div></div>
+
+      <button type="submit" class="btn btn-primary">Calculate</button>
+    </form>
+  </div>
+
+  <div class="col-12 col-lg-7">
+    {% if placement %}
+      <div class="card mb-3"><div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Result</h2>
+        <dl class="row mb-0">
+          <dt class="col-sm-5">Symbol rate</dt>
+          <dd class="col-sm-7 rf-value">{{ placement.symbol_rate_sps|hz }} symbols/second</dd>
+          <dt class="col-sm-5">Roll-off</dt><dd class="col-sm-7">{{ placement.rolloff }}</dd>
+          <dt class="col-sm-5">Occupied bandwidth</dt>
+          <dd class="col-sm-7 rf-value">{{ placement.occupied_bandwidth_hz|mhz }} MHz</dd>
+          <dt class="col-sm-5">Allocated bandwidth</dt>
+          <dd class="col-sm-7 rf-value">{{ placement.allocated_bandwidth_hz|mhz }} MHz</dd>
+          <dt class="col-sm-5">Occupied range</dt>
+          <dd class="col-sm-7 rf-value">
+            [{{ placement.occupied.start_hz|mhz }}, {{ placement.occupied.end_hz|mhz }}) MHz
+          </dd>
+          <dt class="col-sm-5">Allocated range</dt>
+          <dd class="col-sm-7 rf-value">
+            [{{ placement.allocated.start_hz|mhz }}, {{ placement.allocated.end_hz|mhz }}) MHz
+          </dd>
+          <dt class="col-sm-5">Guards</dt>
+          <dd class="col-sm-7 rf-value">
+            {{ placement.guards.left_hz|mhz }} / {{ placement.guards.right_hz|mhz }} MHz
+          </dd>
+        </dl>
+        <p class="small text-body-secondary mt-3 mb-0">
+          Both ranges are half-open: the lower edge belongs to the interval and the upper
+          edge does not. The allocated range is what an overlap check compares.
+        </p>
+      </div></div>
+
+      <div class="card mb-3"><div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">How it was calculated</h2>
+        <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+          <caption class="visually-hidden">Calculation steps in order</caption>
+          <thead><tr>
+            <th scope="col">Step</th><th scope="col">Formula</th>
+            <th scope="col" class="text-end rf-value">Value (MHz)</th>
+          </tr></thead>
+          <tbody>
+            {% for step in steps %}
+              <tr>
+                <th scope="row" class="fw-normal">
+                  {{ step.label }}
+                  <span class="d-block small text-body-secondary">{{ step.detail }}</span>
+                </th>
+                <td><code class="small">{{ step.formula }}</code></td>
+                <td class="text-end rf-value">{{ step.value_hz|mhz }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table></div>
+        <p class="small text-body-secondary mt-3 mb-0">
+          Rounding is outward at every step (A-09): occupied bandwidth and guards round up,
+          a derived symbol rate rounds down. The platform therefore never reserves less
+          spectrum than a transmission uses.
+        </p>
+      </div></div>
+
+      <div class="card"><div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Checks</h2>
+        {% if findings %}
+          <ul class="list-unstyled mb-0">
+            {% for finding in findings %}
+              <li class="mb-2">
+                <span class="badge {% if finding.blocks %}text-bg-danger{% else %}text-bg-warning{% endif %}">
+                  {{ finding.severity }}
+                </span>
+                <code class="small">{{ finding.code }}</code>
+                <span class="d-block small">{{ finding.message }}</span>
+                {% if finding.reference %}
+                  <span class="d-block small text-body-secondary">{{ finding.reference }}</span>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="mb-0 small text-body-secondary">
+            Nothing to report. Note that this screen checks the arithmetic and, if a Window
+            was given, containment — it cannot check for a collision, because no allocation
+            exists yet to collide with.
+          </p>
+        {% endif %}
+        {% if not is_placeable %}
+          <p class="small text-danger mt-3 mb-0">
+            This placement would be refused.
+          </p>
+        {% endif %}
+      </div></div>
+    {% else %}
+      <div class="card"><div class="card-body text-body-secondary">
+        <p class="mb-0">
+          Enter a symbol rate or an occupied bandwidth, a roll-off factor and a centre
+          frequency, then calculate. Every intermediate value and the formula behind it
+          will be shown here.
+        </p>
+      </div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

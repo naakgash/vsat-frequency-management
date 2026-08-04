@@ -17,6 +17,7 @@ urlpatterns = [
     path("administration/", include("accounts.admin_urls")),
     path("specifications/", include("specifications.urls")),
     path("inventory/", include("inventory.urls")),
+    path("engineering/", include("calculations.urls")),
 ]
 
 handler403 = "operations.views.permission_denied"

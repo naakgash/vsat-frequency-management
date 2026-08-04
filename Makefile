@@ -83,7 +83,7 @@ types:  ## Type check
 	# Every application module, in dependency order. Named explicitly rather than
 	# passing '.': that would pull in the test suite, whose looser rules produce
 	# enough noise to hide a real error in the application itself.
-	$(MYPY) config operations audit accounts specifications inventory
+	$(MYPY) config operations audit accounts specifications inventory calculations
 
 .PHONY: imports
 imports:  ## Enforce the module dependency direction of docs/design/01
