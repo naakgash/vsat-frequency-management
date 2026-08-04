@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load rf %}
+{% block title %}{{ satnet.code }} &middot; Satnets{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'satnets:list' %}">Satnets</a></li>
+  <li class="breadcrumb-item active" aria-current="page">{{ satnet.code }}</li>
+</ol></nav>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h1 class="h3 mb-1">{{ satnet.code }} &mdash; {{ satnet.name }}</h1>
+    {% if not satnet.is_active %}
+      <span class="badge text-bg-secondary-subtle border">Inactive</span>
+    {% endif %}
+    {% if not satnet.accepts_new_paths %}
+      <span class="badge text-bg-warning-subtle border">Takes no new Satnet Paths</span>
+    {% endif %}
+  </div>
+  {% if may_act %}
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-primary" href="{% url 'satnets:edit' pk=satnet.pk %}">Edit</a>
+      <form method="post" action="{% url 'satnets:activation' pk=satnet.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="active" value="{% if satnet.is_active %}false{% else %}true{% endif %}">
+        <button class="btn btn-outline-secondary" type="submit">
+          {% if satnet.is_active %}Deactivate{% else %}Reactivate{% endif %}
+        </button>
+      </form>
+    </div>
+  {% endif %}
+</div>
+
+{% if not may_act %}
+  <div class="alert alert-secondary small" role="note">
+    <strong>Read only.</strong> {{ scope_reason }}
+    Acting on a Satnet requires a grant for its Beam and its Hub.
+  </div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-12 col-lg-5">
+    <div class="card"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">Identity</h2>
+      <dl class="row mb-0">
+        <dt class="col-sm-5">Beam</dt>
+        <dd class="col-sm-7"><a href="{{ satnet.beam.get_absolute_url }}">{{ satnet.beam.code }}</a></dd>
+        <dt class="col-sm-5">Hub</dt>
+        <dd class="col-sm-7"><a href="{{ satnet.hub.get_absolute_url }}">{{ satnet.hub.code }}</a></dd>
+        <dt class="col-sm-5">Gateway</dt>
+        <dd class="col-sm-7"><a href="{{ satnet.gateway.get_absolute_url }}">{{ satnet.gateway.code }}</a></dd>
+        <dt class="col-sm-5">Guard policy</dt>
+        <dd class="col-sm-7">{{ satnet.default_guard_policy.code|default:"—" }}</dd>
+        <dt class="col-sm-5">Service type</dt><dd class="col-sm-7">{{ satnet.service_type|default:"—" }}</dd>
+        <dt class="col-sm-5">Customer</dt><dd class="col-sm-7">{{ satnet.customer|default:"—" }}</dd>
+        <dt class="col-sm-5">Platform</dt><dd class="col-sm-7">{{ satnet.platform|default:"—" }}</dd>
+        <dt class="col-sm-5">In force</dt>
+        <dd class="col-sm-7">
+          {{ satnet.effective_from|date:"Y-m-d" }} –
+          {% if satnet.effective_until %}{{ satnet.effective_until|date:"Y-m-d" }}{% else %}open{% endif %}
+        </dd>
+      </dl>
+    </div></div>
+  </div>
+
+  <div class="col-12 col-lg-7">
+    <div class="card"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">Capacity</h2>
+      <p class="small text-body-secondary">
+        This is the Beam's capacity, not a share of it. A Satnet holds no spectrum of its own,
+        and allocations under it compete with every other allocation on the same resources —
+        including other Satnets', and other Beams'.
+        <a href="{% url 'spectrum:beam' pk=satnet.beam.pk %}">Full spectrum view</a>.
+      </p>
+      {% if capacity %}
+        <table class="table table-sm">
+          <caption class="visually-hidden">Free capacity per leg</caption>
+          <thead><tr>
+            <th scope="col">Direction</th><th scope="col">Leg</th>
+            <th scope="col" class="text-end rf-value">Entitlement</th>
+            <th scope="col" class="text-end rf-value">Free</th>
+            <th scope="col" class="text-end rf-value">Largest gap</th>
+          </tr></thead>
+          <tbody>
+            {% for leg in capacity %}
+              <tr>
+                <td>{{ leg.direction }}</td>
+                <td>{{ leg.leg }}</td>
+                <td class="text-end rf-value">{{ leg.summary.total_hz|mhz }}</td>
+                <td class="text-end rf-value">{{ leg.summary.free_hz|mhz }}</td>
+                <td class="text-end rf-value">{{ leg.summary.largest_gap_hz|mhz }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="text-body-secondary mb-0">
+          This Satnet's Beam has no enabled, configured direction, so there is no capacity to
+          report.
+        </p>
+      {% endif %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}

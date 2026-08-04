@@ -128,6 +128,39 @@ class UserGatewayScope(ScopeGrant):
         return f"{self.user} -> gateway {self.gateway_id}"
 
 
+class UserBeamScope(ScopeGrant):
+    """Authorises a user to act on one Beam. **A-17**, §25.
+
+    Planned in S2 alongside the Gateway and Hub grants and deferred until the Beam existed to
+    point at. S10 is where it becomes load-bearing: §25 says an *"Operator can create Satnet
+    only under authorized Beam"*, and until this table existed that sentence had nothing to
+    check against.
+
+    **A grant governs acting, not looking.** Every authenticated user can still read every
+    Beam — an operator has to be able to see what is out there before asking for access to it,
+    and a Beam list that silently hid most of the fleet would look like missing data rather
+    than like a permissions boundary. Narrowing *reads* is a separate decision with its own
+    consequences for the S11 wizard, and it is not made here.
+
+    No cascade in either direction. A Beam grant says nothing about Hubs and a Hub grant
+    nothing about Beams: scope is conjunctive (**A-17**, **OQ-30**), so a Satnet needs both,
+    and inferring one from the other would quietly satisfy half the requirement.
+    """
+
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="beam_scopes")
+    beam = models.ForeignKey("beams.Beam", on_delete=models.PROTECT, related_name="user_scopes")
+
+    class Meta:
+        db_table = "user_beam_scope"
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(fields=["user", "beam"], name="uq_user_beam_scope"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user} -> beam {self.beam_id}"
+
+
 class UserHubScope(ScopeGrant):
     """Authorises a user for one Hub.
 

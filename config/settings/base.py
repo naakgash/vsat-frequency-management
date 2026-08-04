@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "inventory",
     "beams",
     "spectrum",
+    "satnets",
     "operations",
 ]
 

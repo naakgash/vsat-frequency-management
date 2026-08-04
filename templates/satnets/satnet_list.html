@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Satnets{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h1 class="h3 mb-1">Satnets</h1>
+    <p class="text-body-secondary mb-0">
+      A service network under one Beam, served from one Hub. Acting on one requires a scope
+      grant for <strong>both</strong>.
+    </p>
+  </div>
+  {% if perms.satnets.manage_satnets %}
+    <a class="btn btn-primary" href="{% url 'satnets:create' %}">Add Satnet</a>
+  {% endif %}
+</div>
+
+<div class="table-responsive"><table class="table table-hover align-middle">
+  <caption class="visually-hidden">Satnets</caption>
+  <thead><tr>
+    <th scope="col">Code</th><th scope="col">Name</th><th scope="col">Beam</th>
+    <th scope="col">Hub</th><th scope="col">Gateway</th>
+    <th scope="col">Your access</th><th scope="col">Status</th>
+  </tr></thead>
+  <tbody>
+    {% for satnet in satnets %}
+      <tr>
+        <th scope="row" class="fw-normal"><a href="{{ satnet.get_absolute_url }}">{{ satnet.code }}</a></th>
+        <td>{{ satnet.name }}</td>
+        <td><a href="{{ satnet.beam.get_absolute_url }}">{{ satnet.beam.code }}</a></td>
+        <td><a href="{{ satnet.hub.get_absolute_url }}">{{ satnet.hub.code }}</a></td>
+        <td>{{ satnet.gateway.code }}</td>
+        <td>
+          {% if satnet.id in actionable_ids %}
+            <span class="badge text-bg-success-subtle border">Can act</span>
+          {% else %}
+            <span class="badge text-bg-light border">Read only</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if satnet.is_active %}
+            <span class="badge text-bg-success-subtle border">Active</span>
+          {% else %}
+            <span class="badge text-bg-secondary-subtle border">Inactive</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="text-center text-body-secondary py-4">
+        No Satnets yet. A Satnet needs an active Beam, and a Beam needs Frequency Windows and
+        Payload Paths — none of which are seeded (OQ-01, OQ-02).
+      </td></tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+
+<p class="small text-body-secondary">
+  Every Satnet is listed, whether or not you hold the grants to change it. Hiding the rest
+  would look like missing data; the badge says which you can act on, and an administrator can
+  grant the rest.
+</p>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{% if creating %}New Satnet{% else %}Edit {{ satnet.code }}{% endif %}{% endblock %}
+{% block content %}
+<h1 class="h3">{% if creating %}New Satnet{% else %}Edit {{ satnet.code }}{% endif %}</h1>
+
+{% if not creating %}
+  <div class="alert alert-secondary small" role="note">
+    The Beam and the Hub cannot be changed. Allocations under this Satnet are judged against
+    its Beam's spectrum resources, so moving it would re-point every reservation at a
+    different pool without touching the reservations. Create a new Satnet instead.
+  </div>
+{% endif %}
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
+  {% for field in form %}
+    <div class="mb-3">
+      <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+      {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+    </div>
+  {% endfor %}
+  <div class="mb-3">
+    <label class="form-label" for="change_reason">Reason for this change</label>
+    <input class="form-control" type="text" name="change_reason" id="change_reason"
+           placeholder="Recorded in the audit trail">
+  </div>
+  <button class="btn btn-primary" type="submit">Save</button>
+  <a class="btn btn-outline-secondary" href="{% url 'satnets:list' %}">Cancel</a>
+</form>
+{% endblock %}
