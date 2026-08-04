@@ -113,3 +113,31 @@ code {
   color: var(--bs-secondary-color);
   font-style: italic;
 }
+
+/* ---------------------------------------------------------------------------
+   Spectrum occupancy strip (S9)
+
+   A CSS strip rather than a charting library. Specification section 19.4 forbids a CDN, so
+   every chart library is a binary this repository owns forever — and a spectrum strip is a
+   set of rectangles on one linear axis, which is what a positioned span already is. The
+   figures are all present as text in the tables beside it, so nothing here carries meaning
+   that a screen reader cannot reach.
+   --------------------------------------------------------------------------- */
+.spectrum-strip {
+  position: relative;
+  height: 2.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+  background: var(--bs-success-bg-subtle);
+  overflow: hidden;
+}
+
+.spectrum-strip__used {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--bs-primary);
+  /* A hairline so two touching reservations read as two, not as one wide block. Adjacency
+     is legal (A-11) and is exactly the case a reader needs to be able to see. */
+  box-shadow: inset -1px 0 0 var(--bs-body-bg);
+}

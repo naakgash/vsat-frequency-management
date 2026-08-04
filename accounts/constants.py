@@ -56,6 +56,8 @@ VIEW_SPECTRUM_RESOURCE = "inventory.view_spectrumresource"
 MANAGE_INVENTORY = "inventory.manage_inventory"
 
 VIEW_BEAM = "beams.view_beam"
+VIEW_SATNET = "satnets.view_satnet"
+MANAGE_SATNETS = "satnets.manage_satnets"
 MANAGE_BEAMS = "beams.manage_beams"
 
 #: Read access to inventory is uniform across the five entities.
@@ -91,4 +93,9 @@ CAPABILITY_MATRIX: dict[str, tuple[str, ...]] = {
     # mistake.
     VIEW_BEAM: _ALL_ROLES,
     MANAGE_BEAMS: (Role.ADMIN,),
+    # Every role reads Satnets; an Approver reviewing an allocation needs the context.
+    VIEW_SATNET: _ALL_ROLES,
+    # §25: an Operator creates Satnets — but only under a Beam and Hub they hold grants for,
+    # which is object scope rather than capability and is enforced in satnets.services.
+    MANAGE_SATNETS: (Role.ADMIN, Role.OPERATOR),
 }

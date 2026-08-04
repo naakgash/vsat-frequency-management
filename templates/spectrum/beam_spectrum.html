@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load rf %}
+{% block title %}Spectrum &middot; {{ beam.code }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'beams:list' %}">Beams</a></li>
+  <li class="breadcrumb-item"><a href="{{ beam.get_absolute_url }}">{{ beam.code }}</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Spectrum</li>
+</ol></nav>
+
+<h1 class="h3">Spectrum &mdash; {{ beam.code }}</h1>
+<p class="text-body-secondary">
+  Free capacity is calculated from the reservations, never stored (section 16). Bounds are
+  this Beam's active spectrum assignments, not its whole Frequency Window &mdash; a window may
+  be shared, and reporting gaps across it would offer spectrum belonging to another Beam.
+</p>
+
+{% for panel in panels %}
+  <div class="card mb-4"><div class="card-body">
+    <h2 class="h6 text-uppercase text-body-secondary">
+      {{ panel.direction }} &middot; {{ panel.leg }} &middot;
+      <a href="{{ panel.window.get_absolute_url }}">{{ panel.window.code }}</a>
+    </h2>
+
+    <dl class="row small mb-3">
+      <dt class="col-6 col-md-3">Entitlement</dt>
+      <dd class="col-6 col-md-3 rf-value">{{ panel.summary.total_hz|mhz }} MHz</dd>
+      <dt class="col-6 col-md-3">Free</dt>
+      <dd class="col-6 col-md-3 rf-value">{{ panel.summary.free_hz|mhz }} MHz</dd>
+      <dt class="col-6 col-md-3">Largest gap</dt>
+      <dd class="col-6 col-md-3 rf-value">{{ panel.summary.largest_gap_hz|mhz }} MHz</dd>
+      <dt class="col-6 col-md-3">Utilisation</dt>
+      <dd class="col-6 col-md-3">{{ panel.summary.utilisation|floatformat:3 }}</dd>
+    </dl>
+
+    {% if panel.summary.total_hz %}
+      <div class="spectrum-strip mb-3" role="img"
+           aria-label="Occupancy strip. {{ panel.summary.free_hz|mhz }} MHz free of {{ panel.summary.total_hz|mhz }} MHz.">
+        {% for bar in panel.bars %}
+          <span class="spectrum-strip__used"
+                style="left: {{ bar.left|floatformat:4 }}%; width: {{ bar.width|floatformat:4 }}%;"></span>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-danger small">
+        No active spectrum assignment on this leg, so this direction may use nothing here.
+      </p>
+    {% endif %}
+
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <h3 class="h6">Free gaps</h3>
+        {% if panel.summary.gaps %}
+          <table class="table table-sm">
+            <caption class="visually-hidden">Free gaps on this leg</caption>
+            <thead><tr>
+              <th scope="col" class="text-end rf-value">From</th>
+              <th scope="col" class="text-end rf-value">To</th>
+              <th scope="col" class="text-end rf-value">Width</th>
+            </tr></thead>
+            <tbody>
+              {% for gap in panel.summary.gaps %}
+                <tr>
+                  <td class="text-end rf-value">{{ gap.range.start_hz|mhz }}</td>
+                  <td class="text-end rf-value">{{ gap.range.end_hz|mhz }}</td>
+                  <td class="text-end rf-value">{{ gap.width_hz|mhz }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="text-body-secondary small">No free spectrum on this leg.</p>
+        {% endif %}
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <h3 class="h6">Held spectrum</h3>
+        {% if panel.reservations %}
+          <table class="table table-sm">
+            <caption class="visually-hidden">Reservations competing on this leg</caption>
+            <thead><tr>
+              <th scope="col">Resource</th>
+              <th scope="col" class="text-end rf-value">Allocated</th>
+              <th scope="col">Status</th>
+            </tr></thead>
+            <tbody>
+              {% for row in panel.reservations %}
+                <tr>
+                  <td><a href="{{ row.spectrum_resource.get_absolute_url }}">{{ row.spectrum_resource.code }}</a></td>
+                  <td class="text-end rf-value">
+                    {{ row.allocated_start_hz|mhz }} &ndash; {{ row.allocated_end_hz|mhz }}
+                  </td>
+                  <td>{{ row.get_status_display|default:"Fixed reserve" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <p class="small text-body-secondary">
+            Everything holding spectrum on the resources this leg occupies &mdash; including
+            allocations belonging to other Beams, which is the point of judging overlap on the
+            resource rather than on the Beam.
+          </p>
+        {% else %}
+          <p class="text-body-secondary small">Nothing is held on this leg.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div></div>
+{% empty %}
+  <div class="alert alert-secondary">
+    This Beam has no enabled, configured direction, so there is no spectrum to show.
+  </div>
+{% endfor %}
+{% endblock %}

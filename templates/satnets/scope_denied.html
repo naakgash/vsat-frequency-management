@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Not in your scope{% endblock %}
+{% block content %}
+<div class="alert alert-warning" role="alert">
+  <h1 class="h5 alert-heading">Not in your scope</h1>
+  <p class="mb-2">{{ reason }}</p>
+  <hr>
+  <p class="small mb-0">
+    Your role permits this action; what is missing is a grant for this particular object.
+    Acting on a Satnet requires a scope grant for its Beam <strong>and</strong> its Hub, and
+    an administrator can add either.
+  </p>
+</div>
+<a class="btn btn-outline-secondary" href="{% url 'satnets:list' %}">Back to Satnets</a>
+{% endblock %}

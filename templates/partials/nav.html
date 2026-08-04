@@ -21,14 +21,27 @@ Each becomes a real link in the slice named in its title attribute.
              href="{% url 'home' %}"
              {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>Dashboard</a>
         </li>
-        <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S9">Spectrum</span></li>
+        {% comment %}
+        Spectrum is reached through a Beam rather than as a top-level list: a reservation has
+        no meaning apart from the entitlement it sits inside, and a flat list of every
+        reservation would be a table of numbers nobody can act on. The entry stays visible and
+        inert so section 7's order is still legible in the navigation.
+        {% endcomment %}
+        <li class="nav-item">
+          <span class="nav-link disabled" title="Open a Beam to see its spectrum">Spectrum</span>
+        </li>
         {% if perms.beams.view_beam %}
           <li class="nav-item">
             <a class="nav-link{% if request.resolver_match.app_name == 'beams' %} active{% endif %}"
                href="{% url 'beams:list' %}">Beams</a>
           </li>
         {% endif %}
-        <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S10">Satnets</span></li>
+        {% if perms.satnets.view_satnet %}
+          <li class="nav-item">
+            <a class="nav-link{% if request.resolver_match.app_name == 'satnets' %} active{% endif %}"
+               href="{% url 'satnets:list' %}">Satnets</a>
+          </li>
+        {% endif %}
         <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S11">Satnet Paths</span></li>
         {% if perms.inventory.view_satellite %}
           <li class="nav-item">
