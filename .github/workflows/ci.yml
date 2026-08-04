@@ -104,11 +104,41 @@ jobs:
       - name: Build the application image
         run: docker build -f docker/Dockerfile -t vsat-spectrum:ci .
 
-      - name: Scan the image
-        uses: aquasecurity/trivy-action@0.28.0
+      # Trivy is run from its own published image rather than through the marketplace
+      # action. `aquasecurity/trivy-action@0.28.0` stopped resolving — "unable to find
+      # version" — which fails the job before the scanner is ever reached, and a security
+      # gate that breaks when a third party retags is not a gate. Running the image keeps
+      # the version under our control, in a file we can verify, and removes one more
+      # third-party action from a pipeline that holds a repository token.
+      #
+      # Bumping the scanner is a one-line change to TRIVY_VERSION. The vulnerability
+      # database is fetched at run time and is independent of it, so an older scanner
+      # still reports today's CVEs; the version governs the analysers, not the findings.
+
+      # That database is pulled from ghcr.io, which rate-limits anonymous requests.
+      # GitHub-hosted runners share source addresses, so an uncached job can fail on
+      # someone else's traffic. Caching it makes the scan depend on our own code rather
+      # than on the day's luck.
+      - name: Cache the Trivy vulnerability database
+        uses: actions/cache@v4
         with:
-          image-ref: vsat-spectrum:ci
-          format: table
-          exit-code: "1"
-          ignore-unfixed: true
-          severity: HIGH,CRITICAL
+          path: ~/.cache/trivy
+          key: trivy-db-${{ github.run_id }}
+          restore-keys: trivy-db-
+
+      - name: Scan the image
+        env:
+          TRIVY_VERSION: "0.73.0"
+        run: |
+          # The cache directory must exist before it is mounted, or Docker creates it
+          # root-owned and actions/cache cannot read it back on the next run.
+          mkdir -p "${HOME}/.cache/trivy"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "${HOME}/.cache/trivy:/root/.cache/trivy" \
+            "aquasec/trivy:${TRIVY_VERSION}" image \
+            --format table \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --severity HIGH,CRITICAL \
+            vsat-spectrum:ci
