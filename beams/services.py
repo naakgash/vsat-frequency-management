@@ -36,6 +36,8 @@ from beams.models import (
     Beam,
     BeamDirectionConfig,
     BeamDirectionEquipmentProfile,
+    BeamDirectionSpectrumResource,
+    BeamSpectrumAssignment,
     BeamValidationResult,
 )
 
@@ -104,6 +106,7 @@ def update_direction(
     config: BeamDirectionConfig,
     values: dict[str, Any],
     equipment: list[tuple[Any, int]] | None = None,
+    resources: list[Any] | None = None,
     reason: str = "",
 ) -> BeamDirectionConfig:
     """Configure one direction chain.
@@ -114,7 +117,12 @@ def update_direction(
     """
     policy.require(actor, MANAGE_BEAMS, config.beam, reason=reason)
     return _update_direction(
-        actor=actor, config=config, values=values, equipment=equipment, reason=reason
+        actor=actor,
+        config=config,
+        values=values,
+        equipment=equipment,
+        resources=resources,
+        reason=reason,
     )
 
 
@@ -125,6 +133,7 @@ def _update_direction(
     config: BeamDirectionConfig,
     values: dict[str, Any],
     equipment: list[tuple[Any, int]] | None,
+    resources: list[Any] | None,
     reason: str,
 ) -> BeamDirectionConfig:
     before = audit_services.snapshot(config)
@@ -136,6 +145,11 @@ def _update_direction(
 
     if equipment is not None:
         _replace_equipment(config, equipment)
+
+    if resources is not None:
+        _replace_resources(config, resources)
+
+    _ensure_default_assignments(config)
 
     audit_services.record(
         action=BEAM_UPDATED,
@@ -169,6 +183,63 @@ def _replace_equipment(config: BeamDirectionConfig, equipment: list[tuple[Any, i
         elif entry.priority != priority:
             entry.priority = priority
             entry.save(update_fields=["priority"])
+
+
+def _replace_resources(config: BeamDirectionConfig, resources: list[Any]) -> None:
+    """Set the direction's Spectrum Resource mapping to exactly this list. ADR-0018.
+
+    Replace rather than merge, for the same reason as the equipment pool: the form shows the
+    whole set. A merge would make *removing* a resource impossible through the wizard, and
+    removing one is how a mapping gets corrected when it turns out two Beams were competing
+    that should not have been.
+    """
+    chosen = [resource.pk for resource in resources]
+    config.spectrum_resources.exclude(spectrum_resource__in=chosen).delete()
+
+    existing = {link.spectrum_resource_id for link in config.spectrum_resources.all()}
+    for resource in resources:
+        if resource.pk not in existing:
+            BeamDirectionSpectrumResource.objects.create(
+                direction_config=config, spectrum_resource=resource
+            )
+
+
+def _ensure_default_assignments(config: BeamDirectionConfig) -> None:
+    """Give each window one full-width, open-ended assignment if it has none. ADR-0019.
+
+    The fixed-HTS case, which OQ-27 permits directly: *"a Beam Spectrum Assignment may equal
+    the complete Payload Path Window and remain continuously active."* Creating it here is
+    what lets the OQ-27 answer land without changing how any existing Beam behaves — the
+    assignment that used to be implicit in "the Beam uses its whole window" becomes a row
+    that says so.
+
+    It fills a gap and never edits: a direction that already has an assignment for a window
+    has been narrowed deliberately, and re-widening it to the whole window on the next save
+    of an unrelated field would silently hand a Beam back spectrum an engineer took away.
+    """
+    if not config.is_configured:
+        return
+    # is_configured guarantees all three references, but only at runtime — it is a property
+    # over three nullable columns, and mypy cannot narrow through it. Named locally so the
+    # assertion is the single place that says so.
+    path = config.payload_path
+    assert path is not None
+
+    assigned = {assignment.frequency_window_id for assignment in config.spectrum_assignments.all()}
+    for window in (config.uplink_window, config.downlink_window):
+        if window is None or window.pk in assigned:
+            continue
+        BeamSpectrumAssignment.objects.create(
+            direction_config=config,
+            frequency_window=window,
+            payload_path=path,
+            rf_start_hz=window.rf_start_hz,
+            rf_end_hz=window.rf_end_hz,
+            window_rf_start_hz=window.rf_start_hz,
+            window_rf_end_hz=window.rf_end_hz,
+            effective_from=window.effective_from,
+            notes="Created with the direction: the whole window, open-ended.",
+        )
 
 
 def validate_beam(*, actor: Actor, beam: Beam, reason: str = "") -> BeamValidationResult:

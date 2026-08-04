@@ -211,7 +211,32 @@ preview, and cannot activate it while an enabled direction is invalid.
 
 ---
 
-### S9 — Spectrum Reservations, Constraints and the Gap Engine *(Phase 4)* — **gate slice**
+### S9a — Spectrum Resources and Beam Spectrum Assignments *(Phase 4)*
+
+**Why it exists.** The OQ-25 and OQ-27 answers (2026-08-04) split the old S9 in two. Reuse is judged
+on a **Spectrum Resource** rather than on a Beam, and a Beam's usable spectrum is a set of
+time-bounded **assignments** rather than its whole Window. Both are schema, and both have to exist
+before the reservation table can key on them — building them inside S9 would have meant designing the
+constraint and the thing it keys on in the same commit.
+**Goal.** The reuse model exists, is administrable, and is enforced by Beam validation.
+**Files.** `inventory.SpectrumResource` + screens, `beams.BeamSpectrumAssignment`,
+`beams.BeamDirectionSpectrumResource`, two new validation rules, the `_spectrum_panel` partial.
+**Database.** `spectrum_resource`, `beam_spectrum_assignment`, `beam_direction_spectrum_resource`;
+`ck_assignment_within_window`, `excl_assignment_overlap`, and the composite FK pinning an
+assignment's copy of its window edges.
+**Security.** `inventory.view_spectrumresource` for all roles; writes admin-only through the existing
+inventory choke point.
+**Tests.** `tests/beams/test_spectrum_model.py` — an unmapped leg blocks activation; a resource
+shared by two Beams; sub-ranges; both database constraints; the default full-window assignment and
+its refusal to re-widen a narrowed one.
+**Acceptance.** §26.6 (extended), §26.20.
+**ADRs.** 0018 spectrum resources as the reuse key, 0019 beam spectrum assignments.
+**Open questions.** OQ-25, OQ-26, OQ-27 **answered**. OQ-32 is now more consequential — a Satnet
+Path's validity has a second period to sit inside.
+
+---
+
+### S9 — Spectrum Reservations, Constraints and the Gap Engine *(Phase 4)*
 
 **Goal.** The enforcement layer exists and is provably correct before anything can create an
 allocation: reservation table, exclusion constraint, gap engine, and a read-only Spectrum view over a

@@ -17,7 +17,14 @@ from __future__ import annotations
 
 import uuid
 
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import (
+    BigIntegerRangeField,
+    DateTimeRangeField,
+    RangeOperators,
+)
 from django.db import models
+from django.db.models import F, Func, Value
 
 from beams.constants import ConfigurationState, Direction, SpectrumLeg, ValidationOutcome
 from inventory.constants import PolarizationType
@@ -130,8 +137,10 @@ class BeamDirectionConfig(TimestampedModel):
     #: Stored explicitly even though the Payload Path already carries them. §5.2 and §5.3
     #: list the windows *and* the path, and explicit foreign keys give query stability and a
     #: clear audit record. **A-06** requires them to be *identical* to the path's windows and
-    #: ``beams.validation`` enforces it — narrowing a Beam to a sub-range is **OQ-27** and is
-    #: not supported.
+    #: ``beams.validation`` enforces it. Since OQ-27 was answered these are the *ceiling*
+    #: rather than the allocation: what the Beam may actually use is its
+    #: :class:`BeamSpectrumAssignment` rows, which carve these windows and carry their own
+    #: effective periods (ADR-0019).
     uplink_window = models.ForeignKey(
         "inventory.FrequencyWindow",
         null=True,
@@ -226,6 +235,174 @@ class BeamDirectionConfig(TimestampedModel):
         if self.spectral_inversion_override is not None:
             return self.spectral_inversion_override
         return bool(self.payload_path and self.payload_path.is_inverting)
+
+
+class BeamSpectrumAssignment(TimestampedModel):
+    """A sub-range of one of a direction's Frequency Windows, for a period. ADR-0019.
+
+    **OQ-27's answer.** The Frequency Window is the *maximum payload capability*; what a Beam
+    may actually use is the set of its **active** assignments:
+
+        *"A Beam may use one or more sub-ranges of its Payload Path Frequency Window… The
+        free-capacity engine shall calculate available capacity only within the active Beam
+        assignments and not across the complete Payload Path Window."*
+
+    Every allocation must be contained in an active assignment **in frequency and in time**.
+    Two-dimensional containment is easy to half-implement — check the RF, forget the period,
+    and an allocation is valid today and silently outside its assignment next month — so
+    :func:`beams.selectors.assignment_covering` resolves both together and returns what it
+    matched rather than letting each caller re-derive it.
+
+    The fixed-HTS case is one assignment equal to the whole window, open-ended, and that is
+    what configuring a direction creates. It is the degenerate case of the general model, not
+    a separate mode, which is why S8's behaviour survives this change untouched (**A-24**).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    direction_config = models.ForeignKey(
+        BeamDirectionConfig, on_delete=models.CASCADE, related_name="spectrum_assignments"
+    )
+    frequency_window = models.ForeignKey(
+        "inventory.FrequencyWindow", on_delete=models.PROTECT, related_name="beam_assignments"
+    )
+    #: The payload configuration this assignment was drawn against. OQ-27 requires the
+    #: association, and a Payload Path version *is* the versioned record of one (**A-16**),
+    #: so superseding the path cannot silently re-point an assignment at a different payload.
+    payload_path = models.ForeignKey(
+        "inventory.PayloadPath", on_delete=models.PROTECT, related_name="beam_assignments"
+    )
+
+    rf_start_hz = models.BigIntegerField()
+    rf_end_hz = models.BigIntegerField(help_text="Exclusive upper edge: the range is [start, end).")
+    #: Denormalised from the window and pinned by a composite foreign key added in the
+    #: migration. Written by the service, never by a form: it exists so that
+    #: ``assignment ⊆ window`` is a per-row CHECK, which a direct SQL update cannot avoid.
+    window_rf_start_hz = models.BigIntegerField()
+    window_rf_end_hz = models.BigIntegerField()
+
+    rf_range = models.GeneratedField(
+        expression=Func(
+            F("rf_start_hz"),
+            F("rf_end_hz"),
+            Value("[)"),
+            function="int8range",
+            output_field=BigIntegerRangeField(),
+        ),
+        output_field=BigIntegerRangeField(),
+        db_persist=True,
+    )
+    effective_from = models.DateTimeField()
+    effective_until = models.DateTimeField(
+        null=True, blank=True, help_text="Leave empty for an open-ended assignment."
+    )
+    effective_period = models.GeneratedField(
+        expression=Func(
+            F("effective_from"),
+            F("effective_until"),
+            Value("[)"),
+            function="tstzrange",
+            output_field=DateTimeRangeField(),
+        ),
+        output_field=DateTimeRangeField(),
+        db_persist=True,
+    )
+
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "beam_spectrum_assignment"
+        ordering = ["direction_config__beam__code", "rf_start_hz"]
+        default_permissions = ()
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(rf_start_hz__lt=models.F("rf_end_hz")),
+                name="ck_assignment_start_lt_end",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(effective_until__isnull=True)
+                | models.Q(effective_until__gt=models.F("effective_from")),
+                name="ck_assignment_effective_period",
+            ),
+            # The rule that makes the Window a ceiling. Checkable per row only because the
+            # window's edges are carried here and the composite FK keeps the copy honest.
+            models.CheckConstraint(
+                condition=models.Q(rf_start_hz__gte=models.F("window_rf_start_hz"))
+                & models.Q(rf_end_hz__lte=models.F("window_rf_end_hz")),
+                name="ck_assignment_within_window",
+            ),
+            # Two active assignments overlapping in RF *and* time would leave two answers to
+            # "what may this Beam use", and the gap engine would count the shared spectrum
+            # twice. One or more sub-ranges, per OQ-27 — but not overlapping ones.
+            ExclusionConstraint(
+                name="excl_assignment_overlap",
+                expressions=[
+                    ("direction_config", RangeOperators.EQUAL),
+                    ("frequency_window", RangeOperators.EQUAL),
+                    ("rf_range", RangeOperators.OVERLAPS),
+                    ("effective_period", RangeOperators.OVERLAPS),
+                ],
+                condition=models.Q(is_active=True),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.direction_config} {self.rf_start_hz}-{self.rf_end_hz}"
+
+    @property
+    def width_hz(self) -> int:
+        return self.rf_end_hz - self.rf_start_hz
+
+    @property
+    def is_whole_window(self) -> bool:
+        """Does this assignment span its entire window?
+
+        The fixed-HTS default, and worth naming: a screen showing "the whole window" reads
+        very differently from one showing two identical numbers.
+        """
+        return (
+            self.rf_start_hz == self.window_rf_start_hz and self.rf_end_hz == self.window_rf_end_hz
+        )
+
+
+class BeamDirectionSpectrumResource(models.Model):
+    """A Spectrum Resource one of this direction's legs occupies. ADR-0018.
+
+    The join that replaced *"the Beam is the pool"*. **OQ-25** makes overlap a property of
+    the resource an allocation occupies, and *"an allocation may reserve more than one
+    spectrum resource"* — so this is many-to-many rather than a foreign key, and a Satnet
+    Path writes one occupancy row per resource per leg (**A-23**).
+
+    It is explicit configuration rather than anything derived, because it is what an engineer
+    has to be able to inspect and correct. If two Beams ought to compete and do not, the
+    answer is wrong *here* — and no amount of reading the exclusion constraint would show it.
+
+    A direction with no resource on an enabled leg fails validation. That is the deliberate
+    consequence of the table shipping empty: there is no default that would not be a guess
+    about interference.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    direction_config = models.ForeignKey(
+        BeamDirectionConfig, on_delete=models.CASCADE, related_name="spectrum_resources"
+    )
+    spectrum_resource = models.ForeignKey(
+        "inventory.SpectrumResource", on_delete=models.PROTECT, related_name="beam_directions"
+    )
+
+    class Meta:
+        db_table = "beam_direction_spectrum_resource"
+        ordering = ["spectrum_resource__leg", "spectrum_resource__code"]
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=["direction_config", "spectrum_resource"],
+                name="uq_beam_direction_spectrum_resource",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.direction_config} -> {self.spectrum_resource}"
 
 
 class BeamDirectionEquipmentProfile(models.Model):

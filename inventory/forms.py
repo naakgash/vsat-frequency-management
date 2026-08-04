@@ -22,6 +22,7 @@ from inventory.models import (
     Hub,
     PayloadPath,
     Satellite,
+    SpectrumResource,
 )
 
 
@@ -443,3 +444,39 @@ class PayloadPathForm(BootstrapModelForm):
             values["uplink_window_side"] = uplink.side
             values["downlink_window_side"] = downlink.side
         return values
+
+
+class SpectrumResourceForm(BootstrapModelForm):
+    """A physical or logical resource on which allocations compete. ADR-0018.
+
+    No RF edges here, deliberately. A resource is not a range of spectrum — it is the
+    *thing* that is shared, and what an allocation competes over is decided by its own RF
+    range against every other allocation on the same resource. Giving a resource edges
+    would invite an administrator to narrow it and quietly create a second, weaker
+    containment rule alongside the Frequency Window's.
+    """
+
+    class Meta:
+        model = SpectrumResource
+        fields = [
+            "code",
+            "name",
+            "satellite",
+            "kind",
+            "leg",
+            "polarization",
+            "effective_from",
+            "effective_until",
+            "source_reference",
+            "description",
+        ]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        cast(ModelChoiceField, self.fields["satellite"]).queryset = Satellite.objects.filter(
+            is_active=True
+        )
+        # Blank is a real answer here, not an omission: OQ-25 separates polarizations only
+        # *"where their RF chains are independently implemented"*. The label says so,
+        # because an empty dropdown otherwise reads as unfinished work.
+        self.fields["polarization"].label = "Polarization (leave empty if chains are shared)"

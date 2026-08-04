@@ -29,13 +29,41 @@ new.
 
 ### Hierarchy and allocation scope
 
-**A-01 — The Beam is the frequency-reuse domain.**
-The overlap scope in §8.1 is keyed on `Beam`. Two different Beams may therefore hold overlapping
-allocations in the same Frequency Window at the same time. This is the physically expected behaviour
-for spatially separated spot beams and is the direct consequence of removing `Interference Domain`
-(§4).
-*Blast radius:* the exclusion-constraint key. Removing `beam_id` from the key would make the whole
-satellite a single pool. See **OQ-25** — this is the highest-risk assumption in the design.
+**A-01 — ~~The Beam is the frequency-reuse domain.~~ SUPERSEDED by the OQ-25 answer, 2026-08-04.**
+This assumption keyed the §8.1 overlap scope on `Beam`, and it was flagged from the first design pass
+as the highest-risk assumption in the model. It was wrong, and RF engineering has said so:
+
+> *"Frequency reuse shall not be determined solely by Beam identity… allocations compete whenever they
+> occupy the same physical or logical spectrum resource… Beam ID shall not be used as a permanent
+> reuse boundary."*
+
+It is replaced by **A-21**, **A-22** and **A-23**. The correction is recorded rather than edited away
+because the whole point of writing a blast radius down is to be able to find what depended on it.
+
+**A-21 — Overlap is judged on a Spectrum Resource, not on a Beam.**
+A `SpectrumResource` is a physical or logical resource on which allocations compete: a shared RF
+chain, a shared satellite payload input, or a leg of an approved Beam frequency-and-polarization
+plan. The exclusion constraint keys on it. Gateway, Hub, antenna and site identity do **not**
+independently create a reusable resource — two redundant antennas at different sites feeding the same
+satellite payload input are one resource. Orthogonal polarizations are separate resources only where
+their RF chains are independently implemented, which is a fact about the installation and is
+therefore recorded per resource rather than derived.
+*Blast radius:* this **is** the exclusion-constraint key.
+
+**A-22 — Resources are time-bounded and tied to a payload configuration.**
+A resource carries a half-open effective period. A software-defined payload changes which resources
+exist and how spectrum is routed between them, so a reuse boundary that could not expire would be
+wrong the moment a payload was reconfigured.
+*Blast radius:* the constraint gains no column — the resource row itself is what expires — but a
+resource may not be edited in place once referenced, for the reason **A-16** gives.
+
+**A-23 — One allocation occupies many resources.**
+*"An allocation may reserve more than one spectrum resource."* A Satnet Path therefore writes **N ≥ 2**
+occupancy rows, not the two of a canonical/translated pair: each leg of the chain may compete on more
+than one resource. The overlap guarantee is a property of the occupancy rows, and the mapping from a
+Beam direction to the resources its legs occupy is configuration (`BeamDirectionSpectrumResource`).
+*Blast radius:* the reservation service writes a variable number of rows in one transaction, and the
+§9.5 blocking message must name which resource conflicted, not merely that something did.
 
 **A-02 — "Spectrum leg" and "Frequency Window side" are the same concept.**
 §13.6 gives Frequency Window a `side` of `HUB_UPLINK | REMOTE_DOWNLINK | REMOTE_UPLINK | HUB_DOWNLINK`;
@@ -57,20 +85,47 @@ foreign-key-backed check.
 becomes independent and the Window gains a child table. The exclusion key is unchanged either way,
 which is why polarization is kept in the key despite being currently redundant.
 
-**A-05 — A Satnet Path uses exactly one hub-side Equipment Profile.**
+**A-05 — A Satnet Path uses exactly one hub-side Equipment Profile. CONFIRMED by the OQ-26 answer,
+2026-08-04.**
 §9.4 and §13.10 refer to a single profile, a single LO and a single L-band IF range. For `FWD` this
 is the hub **BUC** on the `HUB_UPLINK` leg (IF→RF); for `RTN` it is the hub **BDC/LNB** on the
-`HUB_DOWNLINK` leg (RF→IF). Remote-terminal equipment is not modelled in the MVP.
-*Blast radius:* adding remote-side equipment means a second profile FK and a second IF range on
-`SatnetPath`. See **OQ-26**.
+`HUB_DOWNLINK` leg (RF→IF). Remote-terminal equipment is not modelled, and remote compatibility is
+verified outside the hard allocation constraint.
 
-**A-06 — The Beam's direction configuration references a Payload Path, and its Frequency Windows must
-be identical to that Payload Path's windows.**
-§5.2/§5.3 list the windows *and* the payload path, while §13.7 already gives the Payload Path both
-windows. The Beam stores explicit FKs (for query stability and audit) and a validation rule enforces
-identity. Narrowing a Beam to a sub-range of a Payload Path window is **not** supported in the MVP.
-*Blast radius:* supporting narrowing adds a `beam_sub_range` field and changes containment
-validation. See **OQ-27**.
+The blast radius this assumption used to state was **wrong**, and RF engineering corrected it:
+
+> *"A single remote equipment profile shall not be stored on the Satnet Path because the remote fleet
+> is heterogeneous… it shall use optional Remote Equipment Profiles with a many-to-many relationship
+> between Satnet Paths and permitted terminal profiles."*
+
+*Blast radius:* a link table, never a second foreign key. Recorded now because the cheap-looking
+change is the one that would have been made without asking.
+
+**A-06 — ~~The Beam's Frequency Windows must be identical to its Payload Path's.~~ REVISED by the
+OQ-27 answer, 2026-08-04.**
+The Beam still stores explicit window foreign keys, and they must still be the Payload Path's — that
+half stands, and the wizard still does not offer them as fields. What has changed is what those
+windows *mean*:
+
+> *"The Payload Path Frequency Window represents the maximum payload capability. The spectrum
+> operationally assigned to a Beam shall be represented by separate, time-bounded Beam Spectrum
+> Assignment records."*
+
+The window is now the **ceiling**, not the allocation. See **A-24**.
+
+**A-24 — A Beam's usable spectrum is its active Beam Spectrum Assignments.**
+A `BeamSpectrumAssignment` is a half-open RF sub-range of one of the direction's Frequency Windows,
+with its own half-open effective period, pinned to the Payload Path version it was drawn against. A
+direction may hold **one or more** per window. Every allocation must be contained in an active
+assignment **in frequency and in time**, and the free-capacity engine computes gaps within the active
+assignments only — never across the whole window, which would report a neighbouring Beam's spectrum
+as available.
+
+The fixed-HTS case is the degenerate one: a single assignment equal to the whole window, open-ended.
+That is what the platform creates by default, so today's behaviour is unchanged while the model
+supports a payload whose Beam bandwidth and routing move over time.
+*Blast radius:* containment validation, the gap engine's bounds, and the Satnet Path's validity
+period, which must now sit inside its assignment's.
 
 **A-07 — The canonical operator-input side is configuration, not code.**
 The operator enters one centre frequency; the other side is derived. Which leg is canonical is stored
@@ -239,9 +294,9 @@ NULL/empty until engineering confirms it.
 
 | ID | Question | Why it matters | Provisional build position |
 |---|---|---|---|
-| **OQ-25** | Is frequency reuse permitted between two Beams that share the same Gateway or Hub uplink Frequency Window? | Removing `Interference Domain` (§4) makes `Beam` the reuse key (**A-01**). Two Beams fed from the *same* gateway antenna and the same hub-uplink Window would be allowed to overlap by the constraint, which may be physically wrong. This is the single largest correctness risk in the model. | Beam-keyed exclusion as specified; a warning is raised (not blocked) when two Beams share a Gateway and a `HUB_UPLINK` Window with overlapping RF |
-| **OQ-26** | Is remote-terminal equipment (remote BUC / remote LNB) and its L-band IF in scope? | **A-05** models hub-side equipment only. Remote-side IF limits could invalidate placements that the platform accepts. | Hub-side only; second profile FK is an additive migration |
-| **OQ-27** | May a Beam use a sub-range of its Payload Path's Frequency Window? | **A-06** requires identity. If Beams must be narrowed to a portion of a shared transponder, containment validation and the gap engine both change. | Identity required |
+| **OQ-25** | ~~Is frequency reuse permitted between two Beams that share the same Gateway or Hub uplink Frequency Window?~~ | — | **ANSWERED 2026-08-04.** Reuse is not determined by Beam identity. Overlap is judged on a **Spectrum Resource** — a shared RF chain or shared satellite payload input — and Gateway, Hub, antenna and site identity do not create one. Polarizations are separate resources only where their RF chains are independent. Resources are time-bounded and tied to a payload configuration; an allocation may occupy several. See **A-21**, **A-22**, **A-23** and ADR-0018. |
+| **OQ-26** | ~~Is remote-terminal equipment and its L-band IF in scope?~~ | — | **ANSWERED 2026-08-04.** Not part of the mandatory allocation guarantee. Hub-side equipment and the payload path are guaranteed; remote compatibility is verified outside the hard constraint. A single remote profile on `SatnetPath` is **explicitly ruled out** — the remote fleet is heterogeneous. Any later work uses a many-to-many of permitted terminal profiles. See **A-05**. |
+| **OQ-27** | ~~May a Beam use a sub-range of its Payload Path's Frequency Window?~~ | — | **ANSWERED 2026-08-04.** Yes — one or more. The Window is the **maximum payload capability**; operationally assigned spectrum is a set of time-bounded **Beam Spectrum Assignment** records tied to a payload-configuration version. Allocations must be contained in an active assignment in frequency *and* time, and free capacity is computed within active assignments only. See **A-24** and ADR-0019. |
 | **OQ-28** | Which leg is canonical for operator centre-frequency input, per direction? | Determines what the operator types and what the spectrum map shows first (§9.3). | Stored per Beam direction; default per **A-07** |
 | **OQ-29** | Is outward (ceil) rounding of occupied bandwidth and half-width acceptable? | **A-09**. Affects every stored edge by ≤1 Hz and must match how the incumbent spreadsheets round, or migration comparison in Phase 9 will show spurious differences. | Outward rounding, single documented policy |
 | **OQ-30** | Is Beam+Hub scope conjunctive or disjunctive, and does a Gateway grant cascade to its Hubs? | **A-17**. Determines whether an Operator with a Beam grant but no Hub grant can act. | Conjunctive; Gateway cascades to Hubs |
@@ -260,17 +315,23 @@ those items is a *row* in a table, not a branch in the code. What is **not** pos
 activation — acceptance criterion §26.20 requires that unresolved RF rules be recorded rather than
 guessed, and Phase 0 of the roadmap (§23) exists precisely to close §3.1 before Phase 9 cutover.
 
-The items in §3.3 are different in kind: **OQ-25**, **OQ-26** and **OQ-27** can change the database
-schema. They should be answered during the build rather than before cutover.
+**OQ-25, OQ-26 and OQ-27 were answered on 2026-08-04** and the gate they held is lifted. The briefing
+that put them is `docs/rf-confirmation/oq-25-26-27-briefing.md`; the answers are transcribed verbatim
+in `docs/rf-confirmation/answers-oq-25-26-27.md`.
 
-Two of them gate one slice. **OQ-25** and **OQ-27** must be answered before **S9**, the reservation
-engine: OQ-25 *is* the exclusion-constraint key, and OQ-27 decides what "inside the Window" means for
-both containment and the gap engine. Answering either afterwards means altering a constraint-bearing
-table that holds live allocations.
+Two things are worth recording about how that went, because both bear on how the remaining questions
+should be put.
 
-**OQ-26 does not gate S9.** Remote-terminal equipment adds a second profile reference and a second IF
-range to `SatnetPath`, which **S11** builds; it does not appear in the overlap constraint. It was
-grouped with the other two throughout the design pass and in every slice report up to S8, which
-overstated the gate by one answer. `docs/rf-confirmation/oq-25-26-27-briefing.md` puts all three to
-RF engineering together, because they are discussed together, while saying which two the next slice
-is actually waiting on.
+**The briefing offered a reading, and the reading was wrong.** It proposed that the hub uplink leg be
+keyed per Gateway, reasoning that a shared antenna is a shared signal. The answer says Gateway is not
+the boundary at all: *"Two redundant antennas at different sites shall therefore remain in the same
+payload-input spectrum domain when they feed the same satellite input."* The unit of competition is
+the **satellite payload input**, and geography is irrelevant to it. A Gateway-keyed constraint would
+have permitted two allocations that genuinely collide. Offering a concrete reading is what made that
+correction cheap — there was something specific to reject.
+
+**One answer was a prohibition, not a permission.** OQ-26 did not merely say "out of scope"; it ruled
+out the obvious implementation — a remote profile foreign key on `SatnetPath` — and named the reason:
+a heterogeneous remote fleet means one Satnet supports many terminal configurations. That is the
+design mistake that would have been made silently, and it was only avoided by asking a question whose
+answer was expected to be "no, skip it".

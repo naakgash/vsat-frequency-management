@@ -9,9 +9,15 @@ from __future__ import annotations
 from typing import Any
 
 from beams.constants import CANONICAL_LEG_DEFAULTS, Direction
-from beams.models import Beam, BeamDirectionConfig, BeamDirectionEquipmentProfile
-from inventory.constants import PolarizationType
-from inventory.models import PayloadPolarizationMapping
+from beams.models import (
+    Beam,
+    BeamDirectionConfig,
+    BeamDirectionEquipmentProfile,
+    BeamDirectionSpectrumResource,
+    BeamSpectrumAssignment,
+)
+from inventory.constants import PolarizationType, SpectrumResourceKind
+from inventory.models import PayloadPolarizationMapping, SpectrumResource
 from tests.inventory.factories import (
     make_band,
     make_equipment_profile,
@@ -42,6 +48,8 @@ def configure_direction(
     *,
     with_mapping: bool = True,
     with_equipment: bool = True,
+    with_resources: bool = True,
+    with_assignments: bool = True,
     **extra: Any,
 ) -> BeamDirectionConfig:
     """Give one direction a complete, valid chain.
@@ -79,7 +87,69 @@ def configure_direction(
                 band=beam.band, code=f"BUC-{beam.code}-{direction}"
             ),
         )
+
+    if with_resources:
+        map_spectrum_resources(config)
+    if with_assignments:
+        assign_whole_windows(config)
     return config
+
+
+def map_spectrum_resources(config: BeamDirectionConfig) -> list[SpectrumResource]:
+    """One Spectrum Resource per leg, mapped to this direction. ADR-0018.
+
+    Both legs, because ``_check_spectrum_resources`` blocks on either being unmapped — a leg
+    that competes with nothing would accept an allocation that genuinely collides.
+
+    These are fixtures, not a reuse plan. Which resources really exist and which Beams share
+    them comes from the approved frequency and polarization plan and is **OQ-25** data that
+    is not seeded anywhere.
+    """
+    path = config.payload_path
+    assert path is not None
+    resources = []
+    for leg in (path.uplink_window_side, path.downlink_window_side):
+        resource, _ = SpectrumResource.objects.get_or_create(
+            satellite=config.beam.satellite,
+            code=f"SR-{config.beam.code}-{leg}",
+            defaults={
+                "name": f"Resource {leg}",
+                "kind": SpectrumResourceKind.PAYLOAD_INPUT,
+                "leg": leg,
+                "effective_from": "2026-01-01T00:00:00Z",
+            },
+        )
+        BeamDirectionSpectrumResource.objects.get_or_create(
+            direction_config=config, spectrum_resource=resource
+        )
+        resources.append(resource)
+    return resources
+
+
+def assign_whole_windows(config: BeamDirectionConfig) -> list[BeamSpectrumAssignment]:
+    """One full-width, open-ended assignment per window — the fixed-HTS default. ADR-0019.
+
+    Mirrors what ``services._ensure_default_assignments`` creates. The duplication is
+    deliberate: these factories build rows directly so that a test can construct a state the
+    services would refuse, which is how the database constraints get tested at all.
+    """
+    assignments = []
+    for window in (config.uplink_window, config.downlink_window):
+        assert window is not None
+        assignment, _ = BeamSpectrumAssignment.objects.get_or_create(
+            direction_config=config,
+            frequency_window=window,
+            defaults={
+                "payload_path": config.payload_path,
+                "rf_start_hz": window.rf_start_hz,
+                "rf_end_hz": window.rf_end_hz,
+                "window_rf_start_hz": window.rf_start_hz,
+                "window_rf_end_hz": window.rf_end_hz,
+                "effective_from": window.effective_from,
+            },
+        )
+        assignments.append(assignment)
+    return assignments
 
 
 def make_valid_beam(code: str = "BEAM-OK", **extra: Any) -> Beam:

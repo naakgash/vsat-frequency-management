@@ -1,0 +1,66 @@
+{% load rf %}
+{# What this direction competes on, and what it may use. ADR-0018, ADR-0019. #}
+<div class="row g-3 mt-1">
+  <div class="col-12 col-md-6">
+    <h3 class="h6 text-uppercase text-body-secondary">Competes on</h3>
+    {% if config.spectrum_resources.all %}
+      <ul class="list-unstyled small mb-1">
+        {% for link in config.spectrum_resources.all %}
+          <li>
+            <a href="{{ link.spectrum_resource.get_absolute_url }}">{{ link.spectrum_resource.code }}</a>
+            <span class="text-body-secondary">
+              — {{ link.spectrum_resource.get_leg_display }},
+              {% if link.spectrum_resource.polarization %}
+                {{ link.spectrum_resource.get_polarization_display }} only
+              {% else %}
+                both polarizations
+              {% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="small text-body-secondary mb-0">
+        An allocation here is checked against every allocation on these resources, whatever
+        Beam it belongs to.
+      </p>
+    {% else %}
+      <p class="small text-danger mb-0">
+        No spectrum resource. This direction would compete with nothing, so an allocation on
+        it could not be refused — which is why it blocks activation.
+      </p>
+    {% endif %}
+  </div>
+
+  <div class="col-12 col-md-6">
+    <h3 class="h6 text-uppercase text-body-secondary">May use</h3>
+    {% if config.spectrum_assignments.all %}
+      <ul class="list-unstyled small mb-1">
+        {% for assignment in config.spectrum_assignments.all %}
+          <li class="{% if not assignment.is_active %}text-body-secondary text-decoration-line-through{% endif %}">
+            <a href="{{ assignment.frequency_window.get_absolute_url }}">{{ assignment.frequency_window.code }}</a>
+            <span class="rf-value">
+              {{ assignment.rf_start_hz|mhz }} – {{ assignment.rf_end_hz|mhz }} MHz
+            </span>
+            {% if assignment.is_whole_window %}
+              <span class="badge text-bg-light border">Whole window</span>
+            {% else %}
+              <span class="badge text-bg-info-subtle border">Sub-range</span>
+            {% endif %}
+            <span class="d-block text-body-secondary">
+              {{ assignment.effective_from|date:"Y-m-d" }} –
+              {% if assignment.effective_until %}{{ assignment.effective_until|date:"Y-m-d" }}{% else %}open{% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="small text-body-secondary mb-0">
+        The window is the maximum the payload can carry. These are the parts of it this Beam
+        is entitled to, and free capacity is measured inside them.
+      </p>
+    {% else %}
+      <p class="small text-danger mb-0">
+        No spectrum assignment, so this direction may use none of its windows.
+      </p>
+    {% endif %}
+  </div>
+</div>

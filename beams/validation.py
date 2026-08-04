@@ -196,16 +196,19 @@ def _check_direction(config: BeamDirectionConfig) -> list[Finding]:
     findings += _check_polarizations(config)
     findings += _check_canonical_leg(config)
     findings += _check_equipment(config)
+    findings += _check_spectrum_resources(config)
+    findings += _check_spectrum_assignments(config)
     return findings
 
 
 def _check_window_identity(config: BeamDirectionConfig) -> list[Finding]:
     """**A-06**: the Beam's windows must be *identical* to the Payload Path's.
 
-    Not "contained in" — identical. Narrowing a Beam to a sub-range of a shared transponder
-    is **OQ-27** and is not supported in the MVP, because containment validation and the gap
-    engine both change if it is. Enforcing identity now means the day that answer arrives, it
-    arrives as a feature rather than as a silent behaviour change.
+    This half of A-06 survived the OQ-27 answer unchanged. What changed is what the windows
+    *mean*: they are the maximum payload capability, and the spectrum a Beam may actually use
+    is its :class:`~beams.models.BeamSpectrumAssignment` rows (ADR-0019). So the Beam still
+    points at the path's windows exactly — narrowing happens one level down, where it can
+    carry its own effective period.
     """
     path = _path_of(config)
     # Guaranteed present by is_configured, alongside the path — named locally so the
@@ -223,10 +226,10 @@ def _check_window_identity(config: BeamDirectionConfig) -> list[Finding]:
                 message=(
                     f"The uplink window ({uplink.code}) is not the payload "
                     f"path's uplink window ({path.uplink_window.code}). A Beam uses its "
-                    f"payload path's windows exactly; using part of one is not supported "
-                    f"(OQ-27)."
+                    f"payload path's windows exactly; a sub-range is expressed as a "
+                    f"spectrum assignment, not by pointing at a different window."
                 ),
-                reference="A-06, OQ-27",
+                reference="A-06, ADR-0019",
             )
         )
     if config.downlink_window_id != path.downlink_window_id:
@@ -239,7 +242,7 @@ def _check_window_identity(config: BeamDirectionConfig) -> list[Finding]:
                     f"The downlink window ({downlink.code}) is not the payload "
                     f"path's downlink window ({path.downlink_window.code})."
                 ),
-                reference="A-06, OQ-27",
+                reference="A-06, ADR-0019",
             )
         )
     return findings
@@ -412,6 +415,119 @@ def _check_equipment(config: BeamDirectionConfig) -> list[Finding]:
                 )
             )
 
+    return findings
+
+
+def _check_spectrum_resources(config: BeamDirectionConfig) -> list[Finding]:
+    """Both of this direction's legs must map to a Spectrum Resource. **OQ-25**, ADR-0018.
+
+    This is the rule that replaced *"the Beam is the pool"*. Overlap is judged on the
+    resource an allocation occupies, so a leg mapped to nothing competes with nothing —
+    every allocation on it would be accepted, including one that genuinely collides.
+
+    It **blocks**, and the severity is the whole point. A missing mapping is invisible at
+    allocation time: there is no error, no conflict and no gap in the data, just a permission
+    to interfere. The database cannot detect it either — an exclusion constraint can only
+    compare rows that exist. So it is caught here, before the Beam can be activated at all.
+
+    There is deliberately no fallback. Inferring one resource per Beam would reinstate the
+    superseded **A-01** under a new name; inferring one per satellite would forbid all reuse.
+    Both are guesses about interference, and a guess is what this record exists to replace.
+    """
+    path = _path_of(config)
+    mapped = {link.spectrum_resource.leg for link in config.spectrum_resources.all()}
+    findings: list[Finding] = []
+
+    for leg, window in (
+        (path.uplink_window_side, config.uplink_window),
+        (path.downlink_window_side, config.downlink_window),
+    ):
+        if leg in mapped:
+            continue
+        assert window is not None
+        findings.append(
+            Finding(
+                code="LEG_HAS_NO_SPECTRUM_RESOURCE",
+                severity=Severity.ERROR,
+                direction=config.direction,
+                message=(
+                    f"The {leg} leg ({window.code}) is not mapped to any spectrum resource, "
+                    f"so nothing would compete with an allocation on it. Add the resource "
+                    f"this leg shares — the payload input or RF chain from the approved plan."
+                ),
+                reference="OQ-25, ADR-0018",
+            )
+        )
+
+    for link in config.spectrum_resources.all():
+        resource = link.spectrum_resource
+        if resource.satellite_id != config.beam.satellite_id:
+            findings.append(
+                Finding(
+                    code="SPECTRUM_RESOURCE_WRONG_SATELLITE",
+                    severity=Severity.ERROR,
+                    direction=config.direction,
+                    message=(
+                        f"Spectrum resource {resource.code} belongs to satellite "
+                        f"{resource.satellite.code}, not to this Beam's "
+                        f"{config.beam.satellite.code}."
+                    ),
+                    reference="ADR-0018",
+                )
+            )
+        elif not resource.is_active:
+            findings.append(
+                Finding(
+                    code="SPECTRUM_RESOURCE_DEACTIVATED",
+                    severity=Severity.ERROR,
+                    direction=config.direction,
+                    message=(
+                        f"Spectrum resource {resource.code} has been deactivated. An "
+                        f"allocation cannot be judged against a resource that no longer "
+                        f"describes the payload."
+                    ),
+                    reference="A-22",
+                )
+            )
+
+    return findings
+
+
+def _check_spectrum_assignments(config: BeamDirectionConfig) -> list[Finding]:
+    """Each window needs at least one active assignment. **OQ-27**, ADR-0019.
+
+    The Frequency Window is the maximum payload capability; the assignments are what the Beam
+    may actually use. A direction whose window has no active assignment can allocate nothing,
+    which is correct and would be baffling as an empty gap list — so it is reported here with
+    the reason.
+
+    Containment inside the window is *not* checked: ``ck_assignment_within_window`` makes it
+    impossible to store an assignment that escapes its window, and re-checking a database
+    guarantee in the service layer teaches a reader to distrust the constraint.
+    """
+    assignments = list(config.spectrum_assignments.all())
+    by_window: dict[str, list[object]] = {}
+    for assignment in assignments:
+        if assignment.is_active:
+            by_window.setdefault(str(assignment.frequency_window_id), []).append(assignment)
+
+    findings: list[Finding] = []
+    for window in (config.uplink_window, config.downlink_window):
+        assert window is not None
+        if str(window.pk) not in by_window:
+            findings.append(
+                Finding(
+                    code="WINDOW_HAS_NO_ACTIVE_ASSIGNMENT",
+                    severity=Severity.ERROR,
+                    direction=config.direction,
+                    message=(
+                        f"Window {window.code} has no active spectrum assignment, so this "
+                        f"direction may use none of it. Assign the whole window, or the "
+                        f"sub-ranges this Beam is entitled to."
+                    ),
+                    reference="OQ-27, ADR-0019",
+                )
+            )
     return findings
 
 

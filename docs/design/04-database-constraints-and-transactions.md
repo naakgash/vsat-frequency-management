@@ -59,23 +59,43 @@ Notes:
 
 ### 3.1 Definition
 
+**Revised 2026-08-04 by the OQ-25 answer.** The Beam-keyed key below was the design up to S8 and is
+recorded in ADR-0018 as superseded. Reuse is not determined by Beam identity: allocations compete
+when they occupy the same **Spectrum Resource**.
+
 ```sql
 ALTER TABLE spectrum_reservation
   ADD CONSTRAINT excl_reservation_overlap
   EXCLUDE USING gist (
-      beam_id             WITH =,
-      frequency_window_id WITH =,
-      leg                 WITH =,
-      polarization        WITH =,
-      allocated_rf        WITH &&,
-      active_period       WITH &&
+      spectrum_resource_id WITH =,
+      allocated_rf         WITH &&,
+      active_period        WITH &&
   )
   WHERE (reserves_spectrum);
 ```
 
-This is the literal encoding of the §8.1 overlap scope: same Beam, same Frequency Window, same leg,
-same polarization, overlapping allocated RF **including guards**, overlapping active time, and a
-status that reserves spectrum.
+Three columns where the superseded design had six. Everything that used to be in the key — Beam,
+Frequency Window, leg, polarization — is now a property *of* a resource or irrelevant to whether two
+allocations compete:
+
+- **Beam** is out. *"Beam ID shall not be used as a permanent reuse boundary."*
+- **Gateway is not a substitute.** *"Two redundant antennas at different sites shall remain in the
+  same payload-input spectrum domain when they feed the same satellite input."* Geography is not the
+  unit of competition; the payload input is.
+- **Leg** is a property of a resource — a hub uplink RF chain and a remote downlink are different
+  physical things and are therefore different rows.
+- **Polarization** is a property too, and only sometimes: *"orthogonal polarizations may be treated
+  as separate spectrum resources where their RF chains are independently implemented."* Two
+  resources when they are, one when they are not.
+
+The complexity has not gone away — it has moved to **which resources an allocation occupies**, which
+is configuration in `beam_direction_spectrum_resource` that an administrator can inspect and correct,
+rather than a constraint definition only a migration can change.
+
+**One allocation writes N ≥ 2 occupancy rows**, not two: *"an allocation may reserve more than one
+spectrum resource"* (**A-23**). The two-sided reservation of ADR-0006 is still true of the
+*engineering* — one side is calculated and the other is its image — but it is no longer the row
+count, and the §9.5 blocking message must name **which resource** conflicted.
 
 Four design points:
 
@@ -91,6 +111,26 @@ Four design points:
    (**A-14**).
 4. **`kind` is not in the key** — a `FIXED_RESERVE` block and a Satnet Path allocation must exclude
    each other, which is the whole reason they share a table (**A-13**).
+
+### 3.1.1 Containment moved too
+
+Under the superseded design an allocation had to fit inside its Frequency Window. The OQ-27 answer
+makes the Window the **maximum payload capability**, and the operational bound a
+`beam_spectrum_assignment` — a sub-range with its own effective period (**A-24**, ADR-0019).
+
+So containment is now **two-dimensional**: an allocation must sit inside an assignment in frequency
+*and* in time. Checking the RF and forgetting the period gives an allocation that is valid today and
+silently outside its assignment next month, which is why the service resolves both together and
+returns the assignment it matched rather than letting each caller re-derive it.
+
+The assignment's own containment inside its window is a per-row CHECK
+(`ck_assignment_within_window`), made possible by carrying the window's edges on the assignment and
+pinning the copy with a composite foreign key against `frequency_window (id, rf_start_hz,
+rf_end_hz)` — the same device §3.2 describes for the Payload Path's window sides, for the same
+reason.
+
+Free capacity follows: gaps are computed within **active assignments**, never across the whole
+window, or the engine reports a neighbouring Beam's spectrum as available.
 
 ### 3.2 Why the key columns cannot be trusted as plain denormalisation
 

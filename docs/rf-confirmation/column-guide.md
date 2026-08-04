@@ -103,7 +103,26 @@ The separation applied either side of a transmission, by Band, Window and platfo
 | `percent_right` | percent, up to 3 decimal places | no | — | — |
 | `description` | free text | no | — | — |
 
-## Equipment profiles — `templates/06-equipment-profiles.csv`
+## Spectrum resources — `templates/06-spectrum-resources.csv`
+
+**Answers:** OQ-25
+
+What competes with what. The overlap guarantee is judged on these rows: two allocations conflict when they occupy the same resource with overlapping RF and overlapping time, and nothing else about them matters. A leg mapped to no resource competes with nothing, so this sheet is the difference between a platform that prevents interference and one that merely records it.
+
+| Column | Value | Required | Permitted values | Notes |
+|---|---|---|---|---|
+| `satellite_code` | code of an existing satellite | yes | — | — |
+| `code` | text, up to 50 characters | yes | — | — |
+| `name` | text, up to 200 characters | yes | — | — |
+| `kind` | one of the permitted values | yes | `PAYLOAD_INPUT, RF_CHAIN, BEAM_PLAN` | What kind of thing is shared. Recorded from the approved plan, not inferred. |
+| `leg` | one of the permitted values | yes | `HUB_UPLINK, REMOTE_DOWNLINK, REMOTE_UPLINK, HUB_DOWNLINK` | Which leg of the payload chain this resource sits on. |
+| `polarization` | one of the permitted values | no | `RHCP, LHCP, H, V` | Leave blank when both polarizations share the RF chain and therefore compete. Set it only where the chains are independently implemented. |
+| `effective_from` | ISO 8601 UTC, for example 2026-01-01T00:00:00Z | yes | — | — |
+| `effective_until` | ISO 8601 UTC, for example 2026-01-01T00:00:00Z | no | — | Leave blank for a fixed payload. A software-defined payload's resources are time-bounded, so this is where a reconfiguration is recorded. |
+| `source_reference` | free text | no | — | The approved frequency and polarization plan this resource comes from. |
+| `description` | free text | no | — | — |
+
+## Equipment profiles — `templates/07-equipment-profiles.csv`
 
 **Answers:** OQ-04, OQ-26
 

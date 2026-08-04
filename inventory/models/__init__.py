@@ -20,6 +20,7 @@ from inventory.models.dependent import (
     GuardPolicy,
     PayloadPath,
     PayloadPolarizationMapping,
+    SpectrumResource,
 )
 from inventory.models.independent import (
     Band,
@@ -45,5 +46,6 @@ __all__ = [
     "PayloadPath",
     "PayloadPolarizationMapping",
     "Satellite",
+    "SpectrumResource",
     "TimestampedModel",
 ]
