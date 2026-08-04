@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Spectrum Resources &middot; Inventory{% endblock %}
+{% block content %}
+{% include "inventory/_list_header.html" with title="Spectrum Resources" add_label="Spectrum Resource" blurb="What competes with what. Two allocations conflict when they occupy the same resource with overlapping RF and overlapping time — nothing else about them matters." %}
+
+<div class="table-responsive"><table class="table table-hover align-middle">
+  <caption class="visually-hidden">Spectrum resources</caption>
+  <thead><tr>
+    <th scope="col">Code</th><th scope="col">Satellite</th><th scope="col">Kind</th>
+    <th scope="col">Leg</th><th scope="col">Polarization</th>
+    <th scope="col" class="text-end">Beam directions</th>
+    <th scope="col">In force</th><th scope="col">Status</th>
+  </tr></thead>
+  <tbody>
+    {% for object in objects %}
+      <tr>
+        <th scope="row" class="fw-normal"><a href="{{ object.get_absolute_url }}">{{ object.code }}</a></th>
+        <td>{{ object.satellite.code }}</td>
+        <td>{{ object.get_kind_display }}</td>
+        <td>{{ object.get_leg_display }}</td>
+        <td>
+          {% if object.polarization %}
+            {{ object.get_polarization_display }}
+          {% else %}
+            <span class="text-body-secondary">Shared chains</span>
+          {% endif %}
+        </td>
+        <td class="text-end">{{ object.beam_directions.count }}</td>
+        <td class="small text-body-secondary">
+          {{ object.effective_from|date:"Y-m-d" }} –
+          {% if object.effective_until %}{{ object.effective_until|date:"Y-m-d" }}{% else %}open{% endif %}
+        </td>
+        <td>{% include "inventory/_status_badge.html" %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="8" class="text-center text-body-secondary py-4">
+        No spectrum resources yet. Which resources exist, and which Beams share them, comes
+        from the approved frequency and polarization plan (OQ-25). Nothing is shipped with
+        the product — there is no default that would not be a guess about interference.
+      </td></tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+
+<div class="alert alert-secondary small" role="note">
+  <strong>A Beam direction whose leg maps to no resource cannot be activated.</strong>
+  That is deliberate: a leg mapped to nothing competes with nothing, so every allocation on
+  it would be accepted — including one that genuinely collides — and no database constraint
+  can detect the absence. A blank polarization means both polarizations share the RF chain
+  and therefore compete on this resource.
+</div>
+{% endblock %}

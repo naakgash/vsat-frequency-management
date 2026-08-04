@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load rf %}
 {% block title %}{{ beam.code }} &middot; Beams{% endblock %}
 {% block content %}
 <nav aria-label="Breadcrumb"><ol class="breadcrumb">
@@ -37,6 +38,7 @@
           {{ config.get_direction_display }} chain
         </h2>
         {% include "beams/_chain_diagram.html" %}
+        {% include "beams/_spectrum_panel.html" %}
       </div></div>
     {% endfor %}
   </div>

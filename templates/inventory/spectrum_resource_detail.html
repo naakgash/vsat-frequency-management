@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}{{ object.code }} &middot; Spectrum Resources{% endblock %}
+{% block content %}
+{% include "inventory/_detail_header.html" %}
+
+<div class="row g-4">
+  <div class="col-12 col-lg-7">
+    <div class="card"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">What is shared</h2>
+      <dl class="row mb-0">
+        <dt class="col-sm-4">Satellite</dt>
+        <dd class="col-sm-8"><a href="{{ object.satellite.get_absolute_url }}">{{ object.satellite.code }}</a></dd>
+        <dt class="col-sm-4">Kind</dt><dd class="col-sm-8">{{ object.get_kind_display }}</dd>
+        <dt class="col-sm-4">Leg</dt><dd class="col-sm-8">{{ object.get_leg_display }}</dd>
+        <dt class="col-sm-4">Polarization</dt>
+        <dd class="col-sm-8">
+          {% if object.polarization %}
+            {{ object.get_polarization_display }}
+            <span class="d-block small text-body-secondary">
+              The RF chains are independently implemented, so the other polarization is a
+              separate resource.
+            </span>
+          {% else %}
+            <span class="text-body-secondary">Not separated</span>
+            <span class="d-block small text-body-secondary">
+              Both polarizations share the RF chain and compete on this resource.
+            </span>
+          {% endif %}
+        </dd>
+        <dt class="col-sm-4">In force</dt>
+        <dd class="col-sm-8">
+          {{ object.effective_from|date:"Y-m-d H:i" }} –
+          {% if object.effective_until %}
+            {{ object.effective_until|date:"Y-m-d H:i" }}
+          {% else %}
+            open-ended
+          {% endif %}
+        </dd>
+        {% if object.source_reference %}
+          <dt class="col-sm-4">Source</dt>
+          <dd class="col-sm-8">{{ object.source_reference|linebreaksbr }}</dd>
+        {% endif %}
+      </dl>
+    </div></div>
+
+    <div class="card mt-3"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">Beam directions on this resource</h2>
+      {% if object.beam_directions.all %}
+        <p class="small text-body-secondary">
+          These compete with each other. An allocation on any one of them is checked against
+          allocations on all of them.
+        </p>
+        <ul class="list-unstyled mb-0">
+          {% for link in object.beam_directions.all %}
+            <li class="mb-1">
+              <a href="{{ link.direction_config.beam.get_absolute_url }}">{{ link.direction_config.beam.code }}</a>
+              <span class="badge text-bg-light border">{{ link.direction_config.direction }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-body-secondary mb-0">
+          No Beam direction uses this resource yet, so nothing competes on it.
+        </p>
+      {% endif %}
+    </div></div>
+  </div>
+
+  <div class="col-12 col-lg-5">
+    <div class="card"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">Why this record exists</h2>
+      <p class="small mb-2">
+        Frequency reuse is not decided by Beam identity. Allocations compete when they occupy
+        the same physical or logical resource — a shared RF chain, or a shared satellite
+        payload input.
+      </p>
+      <p class="small mb-0 text-body-secondary">
+        Gateway, Hub, antenna and site identity do not create a separate resource. Two
+        redundant antennas at different sites feeding the same payload input are one
+        resource, and allocations through them compete.
+      </p>
+    </div></div>
+  </div>
+</div>
+
+{% include "inventory/_dependency_summary.html" %}
+{% endblock %}

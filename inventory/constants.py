@@ -130,5 +130,19 @@ class GuardMode(models.TextChoices):
     MAX_OF_FIXED_AND_PERCENT = "MAX_OF_FIXED_AND_PERCENT", "Greater of fixed and percentage"
 
 
+class SpectrumResourceKind(models.TextChoices):
+    """What kind of shared thing a Spectrum Resource records. **OQ-25**, ADR-0018.
+
+    Taken from the three things RF engineering's answer names as creating competition, and
+    deliberately not extended beyond them. The value is descriptive: the overlap constraint
+    keys on the resource's identity, never on this field, so adding a kind later cannot
+    change what conflicts with what.
+    """
+
+    PAYLOAD_INPUT = "PAYLOAD_INPUT", "Shared satellite payload input"
+    RF_CHAIN = "RF_CHAIN", "Shared RF chain"
+    BEAM_PLAN = "BEAM_PLAN", "Approved Beam frequency and polarization plan"
+
+
 # --- Audit actions for versioned master data --------------------------------
 MASTER_DATA_VERSIONED = "MASTER_DATA_VERSIONED"

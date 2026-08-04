@@ -32,6 +32,11 @@ ALLOWED_PREFIXES = (
     # generated intake sheets, stays in scope: an allow-list over the directory would let
     # the term reach a column heading and nothing would notice.
     "docs/rf-confirmation/oq-25-26-27-briefing.md",
+    # The verbatim answer transcript. RF engineering's own wording uses the term once, and a
+    # provenance record that paraphrases its source in order to pass a lint is not a
+    # provenance record. The file explains why the term appears and why the schema does not
+    # use it; the concept is modelled as SpectrumResource.
+    "docs/rf-confirmation/answers-oq-25-26-27.md",
 )
 
 FORBIDDEN_PATTERNS = {

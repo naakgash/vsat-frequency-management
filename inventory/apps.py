@@ -25,6 +25,7 @@ class InventoryConfig(AppConfig):
             Hub,
             PayloadPath,
             Satellite,
+            SpectrumResource,
         )
 
         scope_registry.register(Gateway, scope.gateway_in_scope)
@@ -68,6 +69,11 @@ class InventoryConfig(AppConfig):
             Satellite,
             label="Payload Paths",
             count=lambda satellite: PayloadPath.objects.filter(satellite=satellite).count(),
+        )
+        dependencies.register(
+            Satellite,
+            label="Spectrum Resources",
+            count=lambda satellite: SpectrumResource.objects.filter(satellite=satellite).count(),
         )
         # A window referenced by a payload path has its engineering values frozen: an
         # allocation validated against those numbers must keep them (section 13.6).

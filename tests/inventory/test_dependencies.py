@@ -170,5 +170,10 @@ def test_a_model_with_registrations_but_no_dependants_reports_zeros():
 
     summary = {d.label: d.count for d in dependencies.summarise(satellite)}
 
-    assert summary == {"Frequency Windows": 0, "Payload Paths": 0, "Beams": 0}
+    assert summary == {
+        "Frequency Windows": 0,
+        "Payload Paths": 0,
+        "Spectrum Resources": 0,
+        "Beams": 0,
+    }
     assert dependencies.is_in_use(satellite) is False

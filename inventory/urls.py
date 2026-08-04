@@ -38,6 +38,16 @@ urlpatterns = [
         views.FrequencyWindowDetailView.as_view(),
         name="frequency-window-detail",
     ),
+    path(
+        "spectrum-resources/",
+        views.SpectrumResourceListView.as_view(),
+        name="spectrum-resource-list",
+    ),
+    path(
+        "spectrum-resources/<uuid:pk>/",
+        views.SpectrumResourceDetailView.as_view(),
+        name="spectrum-resource-detail",
+    ),
     path("payload-paths/", views.PayloadPathListView.as_view(), name="payload-path-list"),
     path(
         "payload-paths/<uuid:pk>/",

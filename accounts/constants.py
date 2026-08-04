@@ -52,6 +52,7 @@ VIEW_EQUIPMENT = "inventory.view_equipmentprofile"
 VIEW_GUARD_POLICY = "inventory.view_guardpolicy"
 VIEW_FREQUENCY_WINDOW = "inventory.view_frequencywindow"
 VIEW_PAYLOAD_PATH = "inventory.view_payloadpath"
+VIEW_SPECTRUM_RESOURCE = "inventory.view_spectrumresource"
 MANAGE_INVENTORY = "inventory.manage_inventory"
 
 VIEW_BEAM = "beams.view_beam"
@@ -82,6 +83,7 @@ CAPABILITY_MATRIX: dict[str, tuple[str, ...]] = {
     VIEW_GUARD_POLICY: _ALL_ROLES,
     VIEW_FREQUENCY_WINDOW: _ALL_ROLES,
     VIEW_PAYLOAD_PATH: _ALL_ROLES,
+    VIEW_SPECTRUM_RESOURCE: _ALL_ROLES,
     MANAGE_INVENTORY: (Role.ADMIN,),
     # An Operator picks a Beam when creating a Satnet Path, so every role reads them.
     # Beam *engineering* is administrator-only (specification section 25): the builder

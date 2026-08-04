@@ -28,6 +28,7 @@ from inventory.forms import (
     HubForm,
     PayloadPathForm,
     SatelliteForm,
+    SpectrumResourceForm,
 )
 from inventory.models import (
     Band,
@@ -40,6 +41,7 @@ from inventory.models import (
     MasterDataVersioned,
     PayloadPath,
     Satellite,
+    SpectrumResource,
 )
 
 
@@ -101,6 +103,12 @@ DEPENDENT_ENTITIES = [
         "Satellite translation between an uplink and a downlink window.",
         "inventory:payload-path-list",
         "payload_path",
+    ),
+    EntityLink(
+        "Spectrum Resources",
+        "What competes with what: the key the overlap guarantee is judged on.",
+        "inventory:spectrum-resource-list",
+        "spectrum_resource",
     ),
     EntityLink("Beams", "The root spectrum pool, built from the above.", slice_name="S8"),
 ]
@@ -442,6 +450,12 @@ ENTITY_CONFIG: dict[str, EntityConfig] = {
     "payload-path": EntityConfig(
         PayloadPath, PayloadPathForm, "inventory:payload-path-list", "Payload Path"
     ),
+    "spectrum-resource": EntityConfig(
+        SpectrumResource,
+        SpectrumResourceForm,
+        "inventory:spectrum-resource-list",
+        "Spectrum Resource",
+    ),
 }
 
 
@@ -462,6 +476,22 @@ def stored_copy[ModelT: models.Model](instance: ModelT) -> ModelT:
     # documented way to get a concrete model's manager without naming it.
     manager = cast(Any, type(instance))._default_manager
     return cast(ModelT, manager.get(pk=instance.pk))
+
+
+class SpectrumResourceListView(InventoryListView):
+    entity = "spectrum-resource"
+    permission_required = "inventory.view_spectrumresource"
+    template_name = "inventory/spectrum_resource_list.html"
+    queryset = SpectrumResource.objects.select_related("satellite")
+
+
+class SpectrumResourceDetailView(InventoryDetailView):
+    entity = "spectrum-resource"
+    permission_required = "inventory.view_spectrumresource"
+    template_name = "inventory/spectrum_resource_detail.html"
+    queryset = SpectrumResource.objects.select_related("satellite").prefetch_related(
+        "beam_directions__direction_config__beam"
+    )
 
 
 class InventoryEditView(LoginRequiredMixin, AuditedPermissionRequiredMixin, View):

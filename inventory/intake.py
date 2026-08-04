@@ -34,6 +34,7 @@ from inventory.models import (
     GuardPolicy,
     PayloadPath,
     PayloadPolarizationMapping,
+    SpectrumResource,
 )
 
 if TYPE_CHECKING:
@@ -372,7 +373,50 @@ SHEETS: tuple[Sheet, ...] = (
         ),
     ),
     Sheet(
-        slug="06-equipment-profiles",
+        slug="06-spectrum-resources",
+        title="Spectrum resources",
+        model=SpectrumResource,
+        open_questions=("OQ-25",),
+        purpose=(
+            "What competes with what. The overlap guarantee is judged on these rows: two "
+            "allocations conflict when they occupy the same resource with overlapping RF and "
+            "overlapping time, and nothing else about them matters. A leg mapped to no "
+            "resource competes with nothing, so this sheet is the difference between a "
+            "platform that prevents interference and one that merely records it."
+        ),
+        columns=(
+            Column("satellite_code", lookup="satellite"),
+            Column("code", field="code"),
+            Column("name", field="name"),
+            Column("kind", field="kind"),
+            Column("leg", field="leg"),
+            Column(
+                "polarization",
+                field="polarization",
+                note=(
+                    "Leave blank when both polarizations share the RF chain and therefore "
+                    "compete. Set it only where the chains are independently implemented."
+                ),
+            ),
+            Column("effective_from", field="effective_from"),
+            Column(
+                "effective_until",
+                field="effective_until",
+                note=(
+                    "Leave blank for a fixed payload. A software-defined payload's resources "
+                    "are time-bounded, so this is where a reconfiguration is recorded."
+                ),
+            ),
+            Column(
+                "source_reference",
+                field="source_reference",
+                note="The approved frequency and polarization plan this resource comes from.",
+            ),
+            Column("description", field="description"),
+        ),
+    ),
+    Sheet(
+        slug="07-equipment-profiles",
         title="Equipment profiles",
         model=EquipmentProfile,
         open_questions=("OQ-04", "OQ-26"),

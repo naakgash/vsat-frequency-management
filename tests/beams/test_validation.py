@@ -118,8 +118,15 @@ def test_a_window_that_is_not_the_payload_paths_window_is_refused():
 
 
 @pytest.mark.django_db
-def test_the_identity_finding_cites_the_open_question():
-    """Someone hitting this needs to know it is a deliberate MVP limit, not a bug."""
+def test_the_identity_finding_points_at_assignments_rather_than_the_open_question():
+    """The message this finding carries changed when OQ-27 was answered.
+
+    It used to say a sub-range was not supported and cite the open question. Sub-ranges *are*
+    supported now — as Beam Spectrum Assignments (ADR-0019) — so pointing a direction at a
+    different window is no longer someone reaching for an unbuilt feature. It is simply
+    wrong, and the message has to send them to the assignment rather than to a limitation
+    that no longer exists.
+    """
     beam = make_valid_beam()
     config = beam.direction_configs.get(direction=Direction.FWD)
     config.uplink_window = make_payload_path(satellite=beam.satellite, code="PP-X").uplink_window
@@ -129,7 +136,9 @@ def test_the_identity_finding_cites_the_open_question():
         f for f in validation.validate(beam).findings if f.code == "UPLINK_WINDOW_NOT_PATH_WINDOW"
     )
 
-    assert "OQ-27" in finding.reference
+    assert "ADR-0019" in finding.reference
+    assert "spectrum assignment" in finding.message
+    assert "OQ-27" not in finding.message
 
 
 # ---------------------------------------------------------------------------

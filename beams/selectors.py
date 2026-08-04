@@ -70,7 +70,14 @@ def direction_configs(beam: Beam) -> list[BeamDirectionConfig]:
             "uplink_window",
             "downlink_window",
         )
-        .prefetch_related("equipment_profiles__equipment_profile")
+        .prefetch_related(
+            "equipment_profiles__equipment_profile",
+            # Both panels on the detail screen read these. Without the prefetch the page
+            # issues four queries per direction, and `validation` walks the same two
+            # relations again for every rule.
+            "spectrum_resources__spectrum_resource",
+            "spectrum_assignments__frequency_window",
+        )
         .order_by("direction")
     )
 

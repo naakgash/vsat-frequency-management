@@ -25,9 +25,10 @@ from inventory.constants import (
     GuardMode,
     PolarizationType,
     SpectrumLeg,
+    SpectrumResourceKind,
     TranslationMethod,
 )
-from inventory.models.base import InventoryRecord, MasterDataVersioned
+from inventory.models.base import EffectiveDatedModel, InventoryRecord, MasterDataVersioned
 
 
 class GuardPolicy(InventoryRecord):
@@ -177,6 +178,13 @@ class FrequencyWindow(InventoryRecord, MasterDataVersioned):
             models.UniqueConstraint(fields=["id", "side"], name="uq_window_id_side"),
             models.UniqueConstraint(
                 fields=["id", "side", "polarization"], name="uq_window_id_side_polarization"
+            ),
+            # Target for the composite foreign key that lets BeamSpectrumAssignment carry a
+            # denormalised copy of this window's edges (ADR-0019). Containment of an
+            # assignment inside its window is then a per-row CHECK rather than a service
+            # rule a direct SQL update could walk past.
+            models.UniqueConstraint(
+                fields=["id", "rf_start_hz", "rf_end_hz"], name="uq_window_id_edges"
             ),
             models.CheckConstraint(
                 condition=models.Q(rf_start_hz__lt=models.F("rf_end_hz")),
@@ -388,10 +396,112 @@ class PayloadPolarizationMapping(models.Model):
         return f"{self.uplink_polarization} -> {self.downlink_polarization}"
 
 
+class SpectrumResource(InventoryRecord, EffectiveDatedModel):
+    """A physical or logical resource on which allocations compete. **OQ-25**, ADR-0018.
+
+    This is the key of the overlap guarantee. Two allocations conflict when they occupy the
+    same resource with overlapping RF and overlapping time — nothing else about them matters.
+
+    RF engineering's answer to OQ-25 defines it:
+
+        *"allocations compete whenever they occupy the same physical or logical spectrum
+        resource. This includes a shared RF chain and a shared satellite payload input. Hub,
+        antenna and geographical-site identity do not independently create reusable
+        spectrum."*
+
+    So a resource is **not** derivable from anything the platform already knows. Two
+    redundant antennas at different sites feeding one satellite payload input are one
+    resource; two Beams whose chains are independent are two. The table therefore ships
+    **empty** and a Beam whose legs map to no resource fails validation: a default would be
+    a guess about interference, which is the one thing this record must never be
+    (**A-21**).
+
+    Time-bounded because a software-defined payload changes what competes with what. A reuse
+    boundary that could not expire would be wrong the moment a payload was reconfigured
+    (**A-22**).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=50)
+    name = models.CharField(max_length=200)
+
+    satellite = models.ForeignKey(
+        "inventory.Satellite", on_delete=models.PROTECT, related_name="spectrum_resources"
+    )
+    kind = models.CharField(
+        max_length=20,
+        choices=SpectrumResourceKind.choices,
+        help_text="What kind of thing is shared. Recorded from the approved plan, not inferred.",
+    )
+    leg = models.CharField(
+        max_length=16,
+        choices=SpectrumLeg.choices,
+        help_text="Which leg of the payload chain this resource sits on.",
+    )
+    # Nullable, and the null is a statement rather than missing data: OQ-25 makes
+    # orthogonal polarizations separate resources *"where their RF chains are independently
+    # implemented"*, which is a fact about a particular installation. Empty means this
+    # resource is not polarization-separated and both polarizations compete on it.
+    polarization = models.CharField(
+        max_length=4,
+        choices=PolarizationType.choices,
+        blank=True,
+        help_text="Leave empty when the RF chains are shared across polarizations.",
+    )
+
+    source_reference = models.TextField(
+        blank=True,
+        help_text="The approved frequency and polarization plan this resource comes from.",
+    )
+    description = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "spectrum_resource"
+        ordering = ["satellite__code", "leg", "code"]
+        default_permissions = ("view",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["satellite", "code"], name="uq_spectrum_resource_satellite_code"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(effective_until__isnull=True)
+                | models.Q(effective_until__gt=models.F("effective_from")),
+                name="ck_spectrum_resource_effective_period",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["satellite", "leg"],
+                name="spectrum_resource_idx",
+                condition=models.Q(is_active=True),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        suffix = f"/{self.polarization}" if self.polarization else ""
+        return f"{self.code} ({self.leg}{suffix})"
+
+    def get_absolute_url(self) -> str:
+        from django.urls import reverse
+
+        return reverse("inventory:spectrum-resource-detail", kwargs={"pk": self.pk})
+
+    @property
+    def separates_polarizations(self) -> bool:
+        """Do the two polarizations compete on this resource, or not?
+
+        Named rather than left as a truthiness check on ``polarization``, because the
+        question a reader actually has is about RF chains, not about whether a column is
+        blank.
+        """
+        return bool(self.polarization)
+
+
 __all__ = [
     "DateTimeRangeField",
     "FrequencyWindow",
     "GuardPolicy",
     "PayloadPath",
     "PayloadPolarizationMapping",
+    "SpectrumResource",
 ]
