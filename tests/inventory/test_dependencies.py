@@ -143,13 +143,18 @@ def test_registering_the_same_label_twice_replaces_rather_than_duplicates():
 
 @pytest.mark.django_db
 def test_models_with_no_registered_dependency_summarise_empty():
-    """A Payload Path has no dependants until Satnet Paths land in S11."""
-    from tests.inventory.factories import make_payload_path
+    """A Beam has no dependants until Satnets land in S10.
 
-    path = make_payload_path()
+    The subject of this test moves up the stack with each slice, which is the registry
+    working: S5 used a Payload Path, and S8's Beam direction configs made that no longer
+    true. Anything still at the top of the graph will do.
+    """
+    from tests.beams.factories import make_beam
 
-    assert dependencies.summarise(path) == []
-    assert dependencies.is_in_use(path) is False
+    beam = make_beam()
+
+    assert dependencies.summarise(beam) == []
+    assert dependencies.is_in_use(beam) is False
 
 
 @pytest.mark.django_db
@@ -165,5 +170,5 @@ def test_a_model_with_registrations_but_no_dependants_reports_zeros():
 
     summary = {d.label: d.count for d in dependencies.summarise(satellite)}
 
-    assert summary == {"Frequency Windows": 0, "Payload Paths": 0}
+    assert summary == {"Frequency Windows": 0, "Payload Paths": 0, "Beams": 0}
     assert dependencies.is_in_use(satellite) is False

@@ -22,7 +22,12 @@ Each becomes a real link in the slice named in its title attribute.
              {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>Dashboard</a>
         </li>
         <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S9">Spectrum</span></li>
-        <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S8">Beams</span></li>
+        {% if perms.beams.view_beam %}
+          <li class="nav-item">
+            <a class="nav-link{% if request.resolver_match.app_name == 'beams' %} active{% endif %}"
+               href="{% url 'beams:list' %}">Beams</a>
+          </li>
+        {% endif %}
         <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S10">Satnets</span></li>
         <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S11">Satnet Paths</span></li>
         {% if perms.inventory.view_satellite %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ beam.code }} &middot; Activation{% endblock %}
+{% block content %}
+<nav aria-label="Breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'beams:list' %}">Beams</a></li>
+  <li class="breadcrumb-item"><a href="{{ beam.get_absolute_url }}">{{ beam.code }}</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Activation</li>
+</ol></nav>
+
+<h1 class="h3 mb-1">{{ beam.code }} — activation</h1>
+<p class="text-body-secondary">
+  Activating a Beam makes it selectable for Satnets and allocations. Section 26.6: it is
+  refused while any enabled direction is invalid.
+</p>
+{% include "beams/builder/_steps.html" %}
+
+{% if refusal %}
+  <div class="alert alert-danger" role="alert">
+    <strong>Activation refused.</strong> {{ refusal }}
+  </div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-12 col-lg-7">
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">
+        Configuration {% include "beams/_state_badge.html" with state=report.state %}
+      </h2>
+      {% include "beams/_findings.html" %}
+    </div></div>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="card"><div class="card-body">
+        <div class="mb-3">
+          <label for="reason" class="form-label">Change reason</label>
+          <input type="text" name="reason" id="reason" class="form-control"
+                 placeholder="Why is this Beam being turned on or off?">
+          <div class="form-text">Recorded in the audit trail, including if activation is refused.</div>
+        </div>
+        {% if beam.is_active %}
+          <button type="submit" name="action" value="deactivate" class="btn btn-outline-warning">
+            Deactivate
+          </button>
+        {% else %}
+          <button type="submit" name="action" value="activate" class="btn btn-primary">
+            Activate
+          </button>
+        {% endif %}
+        <a class="btn btn-link" href="{{ beam.get_absolute_url }}">Back to the Beam</a>
+      </div></div>
+    </form>
+    <p class="small text-body-secondary mt-2">
+      Activation re-validates rather than trusting the stored state: the windows and payload
+      paths underneath a Beam can be superseded between the last check and this button.
+    </p>
+  </div>
+
+  <div class="col-12 col-lg-5">
+    {% for config in configs %}
+      <div class="card mb-3"><div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">{{ config.direction }}</h2>
+        {% include "beams/_chain_diagram.html" %}
+      </div></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

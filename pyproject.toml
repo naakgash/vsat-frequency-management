@@ -133,6 +133,7 @@ root_packages = [
     "audit",
     "specifications",
     "inventory",
+    "beams",
     "calculations",
 ]
 include_external_packages = true
@@ -146,6 +147,7 @@ source_modules = [
     "audit",
     "specifications",
     "inventory",
+    "beams",
     "calculations",
 ]
 forbidden_modules = ["config"]
@@ -161,6 +163,7 @@ forbidden_modules = [
     "operations",
     "specifications",
     "inventory",
+    "beams",
     "calculations",
 ]
 
@@ -171,12 +174,20 @@ forbidden_modules = [
 name = "accounts does not import domain modules"
 type = "forbidden"
 source_modules = ["accounts"]
-forbidden_modules = ["operations", "specifications", "inventory", "calculations"]
+forbidden_modules = ["operations", "specifications", "inventory", "beams", "calculations"]
 
 [[tool.importlinter.contracts]]
 name = "module layering"
 type = "layers"
-layers = ["operations", "inventory", "specifications", "calculations", "accounts", "audit"]
+layers = [
+    "operations",
+    "beams",
+    "inventory",
+    "specifications",
+    "calculations",
+    "accounts",
+    "audit",
+]
 
 [[tool.importlinter.contracts]]
 # The reason S6 could be built before any inventory data existed, and the reason its
@@ -205,6 +216,7 @@ forbidden_modules = [
     "config",
     "accounts",
     "audit",
+    "beams",
     "inventory",
     "operations",
     "specifications",
