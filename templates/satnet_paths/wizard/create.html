@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load rf %}
+{% block title %}New Satnet Path &middot; {{ satnet.code }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'satnets:list' %}">Satnets</a></li>
+  <li class="breadcrumb-item"><a href="{{ satnet.get_absolute_url }}">{{ satnet.code }}</a></li>
+  <li class="breadcrumb-item active" aria-current="page">New Satnet Path</li>
+</ol></nav>
+
+<h1 class="h3">New Satnet Path</h1>
+<p class="text-body-secondary">
+  Under {{ satnet.code }}, on Beam <a href="{{ satnet.beam.get_absolute_url }}">{{ satnet.beam.code }}</a>.
+  <a href="{% url 'spectrum:beam' pk=satnet.beam.pk %}">See what is already allocated</a>.
+</p>
+
+{% if findings %}{% include "satnet_paths/_findings.html" %}{% endif %}
+{% if auto_place_failed %}
+  <div class="alert alert-warning">
+    No gap on this leg is wide enough for that transmission, including its guards. Reduce the
+    bandwidth, or free some spectrum.
+  </div>
+{% endif %}
+
+<form method="post" class="row g-4">
+  {% csrf_token %}
+  <div class="col-12 col-lg-6">
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}
+      <div class="mb-3">
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+        {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+    <div class="mb-3">
+      <label class="form-label" for="change_reason">Reason</label>
+      <input class="form-control" type="text" name="change_reason" id="change_reason"
+             placeholder="Recorded in the audit trail">
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <button class="btn btn-outline-secondary" type="submit" name="action" value="preview">Preview</button>
+      <button class="btn btn-outline-secondary" type="submit"
+              formaction="{% url 'satnet_paths:auto-place' satnet_pk=satnet.pk %}">Auto-place</button>
+      <button class="btn btn-primary" type="submit" name="action" value="save">Save as draft</button>
+      <button class="btn btn-primary" type="submit" name="status" value="PLANNED">Save as planned</button>
+    </div>
+    <p class="form-text mt-2">
+      Auto-place proposes the lowest gap that fits and saves nothing (section 9.3). Whatever
+      you accept is re-checked on save — the gap can be taken while you are reading.
+    </p>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    {% if proposal %}
+      <div class="card"><div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Engineering preview</h2>
+        <dl class="row small mb-0">
+          <dt class="col-6">Occupied bandwidth</dt>
+          <dd class="col-6 rf-value">{{ proposal.occupied_bw_hz|mhz }} MHz</dd>
+          <dt class="col-6">Symbol rate</dt>
+          <dd class="col-6 rf-value">{{ proposal.symbol_rate_sps|default:"—" }}</dd>
+          <dt class="col-6">Guards</dt>
+          <dd class="col-6 rf-value">
+            {{ proposal.guard_widths.left_hz|mhz }} / {{ proposal.guard_widths.right_hz|mhz }} MHz
+          </dd>
+          <dt class="col-6">Uplink occupied</dt>
+          <dd class="col-6 rf-value">
+            {{ proposal.placement.uplink.occupied.start_hz|mhz }} – {{ proposal.placement.uplink.occupied.end_hz|mhz }}
+          </dd>
+          <dt class="col-6">Uplink allocated</dt>
+          <dd class="col-6 rf-value">
+            {{ proposal.placement.uplink.allocated.start_hz|mhz }} – {{ proposal.placement.uplink.allocated.end_hz|mhz }}
+          </dd>
+          <dt class="col-6">Downlink occupied</dt>
+          <dd class="col-6 rf-value">
+            {{ proposal.placement.downlink.occupied.start_hz|mhz }} – {{ proposal.placement.downlink.occupied.end_hz|mhz }}
+          </dd>
+          <dt class="col-6">Downlink allocated</dt>
+          <dd class="col-6 rf-value">
+            {{ proposal.placement.downlink.allocated.start_hz|mhz }} – {{ proposal.placement.downlink.allocated.end_hz|mhz }}
+          </dd>
+          <dt class="col-6">Spectrum inverted</dt>
+          <dd class="col-6">{% if proposal.placement.inverted %}Yes{% else %}No{% endif %}</dd>
+        </dl>
+        <p class="small text-body-secondary mt-2 mb-0">
+          One side is calculated and the other is its image, never a second independent
+          calculation (ADR-0006). Both are reserved.
+        </p>
+      </div></div>
+
+      {% if proposal.findings %}
+        <div class="mt-3">{% include "satnet_paths/_findings.html" with findings=proposal.findings %}</div>
+      {% else %}
+        <div class="alert alert-success mt-3 small mb-0">
+          Nothing blocks this allocation right now. It is re-checked on save.
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="card"><div class="card-body text-body-secondary small">
+        Enter a size and a centre frequency, then Preview — or use Auto-place to be offered the
+        lowest gap that fits.
+      </div></div>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}

@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "beams",
     "spectrum",
     "satnets",
+    "satnet_paths",
     "operations",
 ]
 

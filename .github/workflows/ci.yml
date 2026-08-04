@@ -41,7 +41,7 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Type check
-        run: uv run mypy config operations audit accounts specifications inventory beams calculations spectrum satnets
+        run: uv run mypy config operations audit accounts specifications inventory beams calculations spectrum satnets satnet_paths
 
       - name: Module dependency direction
         run: uv run lint-imports

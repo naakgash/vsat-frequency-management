@@ -20,6 +20,7 @@ urlpatterns = [
     path("beams/", include("beams.urls")),
     path("spectrum/", include("spectrum.urls")),
     path("satnets/", include("satnets.urls")),
+    path("satnet-paths/", include("satnet_paths.urls")),
     path("engineering/", include("calculations.urls")),
 ]
 

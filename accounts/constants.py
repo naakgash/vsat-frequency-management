@@ -58,6 +58,8 @@ MANAGE_INVENTORY = "inventory.manage_inventory"
 VIEW_BEAM = "beams.view_beam"
 VIEW_SATNET = "satnets.view_satnet"
 MANAGE_SATNETS = "satnets.manage_satnets"
+VIEW_SATNET_PATH = "satnet_paths.view_satnetpath"
+MANAGE_SATNET_PATHS = "satnet_paths.manage_satnet_paths"
 MANAGE_BEAMS = "beams.manage_beams"
 
 #: Read access to inventory is uniform across the five entities.
@@ -98,4 +100,10 @@ CAPABILITY_MATRIX: dict[str, tuple[str, ...]] = {
     # §25: an Operator creates Satnets — but only under a Beam and Hub they hold grants for,
     # which is object scope rather than capability and is enforced in satnets.services.
     MANAGE_SATNETS: (Role.ADMIN, Role.OPERATOR),
+    # The allocation record every role needs to read: an Approver decides on one, an Observer
+    # reports on it.
+    VIEW_SATNET_PATH: _ALL_ROLES,
+    # §9: creating allocations is the Operator's job. Object scope narrows it further — the
+    # Satnet's Beam and Hub must both be granted (A-17) — and that is checked separately.
+    MANAGE_SATNET_PATHS: (Role.ADMIN, Role.OPERATOR),
 }

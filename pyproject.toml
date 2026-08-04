@@ -129,6 +129,7 @@ django_settings_module = "config.settings.test"
 root_packages = [
     "config",
     "operations",
+    "satnet_paths",
     "satnets",
     "spectrum",
     "accounts",
@@ -145,6 +146,7 @@ name = "config is the composition root and nothing imports it"
 type = "forbidden"
 source_modules = [
     "operations",
+    "satnet_paths",
     "satnets",
     "spectrum",
     "accounts",
@@ -185,6 +187,7 @@ name = "module layering"
 type = "layers"
 layers = [
     "operations",
+    "satnet_paths",
     "satnets",
     "spectrum",
     "beams",

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load rf %}
+{% block title %}Satnet Paths{% endblock %}
+{% block content %}
+<h1 class="h3">Satnet Paths</h1>
+<p class="text-body-secondary">
+  The current revision of each allocation. Superseded revisions stay in the record and are
+  reached from a Path's own page.
+</p>
+
+<div class="table-responsive"><table class="table table-hover align-middle">
+  <caption class="visually-hidden">Satnet paths</caption>
+  <thead><tr>
+    <th scope="col">Code</th><th scope="col">Satnet</th><th scope="col">Direction</th>
+    <th scope="col" class="text-end rf-value">Canonical</th>
+    <th scope="col" class="text-end rf-value">Translated</th>
+    <th scope="col" class="text-end rf-value">Occupied</th>
+    <th scope="col">Status</th>
+  </tr></thead>
+  <tbody>
+    {% for path in paths %}
+      <tr>
+        <th scope="row" class="fw-normal"><a href="{{ path.get_absolute_url }}">{{ path.code }}</a></th>
+        <td><a href="{{ path.satnet.get_absolute_url }}">{{ path.satnet.code }}</a></td>
+        <td>{{ path.direction }}</td>
+        <td class="text-end rf-value">{{ path.canonical_allocated_start_hz|mhz }} – {{ path.canonical_allocated_end_hz|mhz }}</td>
+        <td class="text-end rf-value">{{ path.translated_allocated_start_hz|mhz }} – {{ path.translated_allocated_end_hz|mhz }}</td>
+        <td class="text-end rf-value">{{ path.occupied_bw_hz|mhz }}</td>
+        <td><span class="badge text-bg-light border">{{ path.get_status_display }}</span></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="text-center text-body-secondary py-4">
+        No Satnet Paths yet. One is created from a Satnet, under a Beam whose spectrum
+        assignments and resources are configured.
+      </td></tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}
