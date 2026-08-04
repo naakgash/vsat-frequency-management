@@ -125,7 +125,22 @@ The fixed-HTS case is the degenerate one: a single assignment equal to the whole
 That is what the platform creates by default, so today's behaviour is unchanged while the model
 supports a payload whose Beam bandwidth and routing move over time.
 *Blast radius:* containment validation, the gap engine's bounds, and the Satnet Path's validity
-period, which must now sit inside its assignment's.
+period, which must now sit inside its assignment's. Settled by **A-25**.
+
+**A-25 — A Satnet Path lives inside the intersection of three validity periods.**
+Answered by **OQ-32**, 2026-08-04. An operational Path's active period must be contained within
+its Satnet's, its Beam's *and* its referenced Beam Spectrum Assignment's. The maximum permitted
+period is the intersection; the service refuses anything beyond it, names the limiting parent,
+and returns that maximum. Draft records may sit outside and produce warnings, but may not
+reserve spectrum or become operational. The assignment must additionally belong to the same Beam
+and match the Path's direction, polarization and Payload Path.
+
+The answer required a column the platform did not have: **`Beam` had no validity period**, only
+`is_active` and an activation record — although `docs/design/02` had listed it among the
+effective-dated entities and `docs/design/04` named `ck_beam_effective` from the design pass.
+*Blast radius:* one column on `beam`, one CHECK, and `satnets.containment` as the single place
+the rule is expressed. Not a database constraint: it spans four tables and a CHECK is per-row,
+which ADR-0020 records as a deliberate and stated gap.
 
 **A-07 — The canonical operator-input side is configuration, not code.**
 The operator enters one centre frequency; the other side is derived. Which leg is canonical is stored
@@ -301,7 +316,7 @@ NULL/empty until engineering confirms it.
 | **OQ-29** | Is outward (ceil) rounding of occupied bandwidth and half-width acceptable? | **A-09**. Affects every stored edge by ≤1 Hz and must match how the incumbent spreadsheets round, or migration comparison in Phase 9 will show spurious differences. | Outward rounding, single documented policy |
 | **OQ-30** | Is Beam+Hub scope conjunctive or disjunctive, and does a Gateway grant cascade to its Hubs? | **A-17**. Determines whether an Operator with a Beam grant but no Hub grant can act. | Conjunctive; Gateway cascades to Hubs |
 | **OQ-31** | Is there a tuning raster (minimum centre-frequency step) per Band, platform or modem? | Real modems tune on a raster (e.g. kHz steps). Without it, Auto-place will propose centres that no modem can be configured to. Not inventable — needs platform data. | `Band.tuning_raster_hz` nullable; when NULL, no raster is enforced and Auto-place emits an informational note |
-| **OQ-32** | May a Satnet Path's validity period extend beyond its Satnet's or Beam's effective period? | §13.9 forbids a Satnet outliving its Beam but is silent for Paths. Determines whether containment is a CHECK or a warning. | Containment enforced at service level, warned in UI, not a DB constraint |
+| **OQ-32** | ~~May a Satnet Path's validity period extend beyond its Satnet's or Beam's effective period?~~ | — | **ANSWERED 2026-08-04.** No. All three containments — Satnet, Beam and Beam Spectrum Assignment — are **hard requirements** for an operational Path; the maximum permitted period is their **intersection**, and the service must name the limiting parent and return that maximum. Drafts may sit outside and warn, but must not reserve spectrum or become operational. The assignment must also match the Path's Beam, direction, polarization and Payload Path — *temporal containment alone is not sufficient*. See **A-25** and ADR-0020. |
 | **OQ-33** | Does the platform reserve spectrum for a Satnet Path whose Beam has been deactivated mid-life? | Beam deactivation with live ON_AIR paths is not covered by §5 or §15. | Deactivation blocked while spectrum-reserving paths exist |
 | **OQ-34** | Are minimum edge guards (§13.6) part of the allocated range or a separate validation? | If part of the range, the DB blocks edge placement; if separate, only the service does. | Separate validation against Window edges; the DB enforces containment only |
 | **OQ-35** | When an Equipment Profile or Frequency Window is re-versioned, do live ON_AIR paths migrate to the new version or stay pinned? | **A-16** pins them. Migration semantics change the revision policy in §15.4. | Pinned to the referenced version; a report lists paths on superseded versions |

@@ -11,6 +11,7 @@ import uuid
 
 from django.db import models
 
+from calculations.periods import TimePeriod
 from inventory.models import EffectiveDatedModel, InventoryRecord
 
 
@@ -95,6 +96,11 @@ class Satnet(InventoryRecord, EffectiveDatedModel):
         from django.urls import reverse
 
         return reverse("satnets:detail", kwargs={"pk": self.pk})
+
+    @property
+    def validity(self) -> TimePeriod:
+        """This Satnet's validity as a period, for the **OQ-32** containment check."""
+        return TimePeriod(self.effective_from, self.effective_until)
 
     @property
     def accepts_new_paths(self) -> bool:

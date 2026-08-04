@@ -25,8 +25,10 @@ from django.contrib.postgres.fields import (
 )
 from django.db import models
 from django.db.models import F, Func, Value
+from django.utils import timezone
 
 from beams.constants import ConfigurationState, Direction, SpectrumLeg, ValidationOutcome
+from calculations.periods import TimePeriod
 from inventory.constants import PolarizationType
 from inventory.models import TimestampedModel
 
@@ -60,6 +62,21 @@ class Beam(TimestampedModel):
         default=ConfigurationState.INCOMPLETE,
     )
 
+    #: The Beam's validity period, half-open ``[effective_from, effective_until)`` (**A-10**).
+    #: Added by the **OQ-32** answer, which requires a Satnet Path to be contained within
+    #: *"its Beam's validity period"* — a period the Beam did not have. ``docs/design/02`` had
+    #: listed Beam among the effective-dated entities and ``docs/design/04`` named
+    #: ``ck_beam_effective`` since the design pass; S8 simply never built it, and nothing
+    #: needed it badly enough to notice until an allocation had to sit inside it.
+    #:
+    #: Distinct from ``is_active``, and both are needed. ``is_active`` is an operational
+    #: switch somebody flips now; this is the span over which the Beam is a real thing. A Beam
+    #: can be within its validity and switched off, and an allocation must respect both.
+    effective_from = models.DateTimeField(default=timezone.now)
+    effective_until = models.DateTimeField(
+        null=True, blank=True, help_text="Leave empty for an open-ended Beam."
+    )
+
     is_active = models.BooleanField(default=False)
     activated_at = models.DateTimeField(null=True, blank=True)
     activated_by = models.ForeignKey(
@@ -90,6 +107,11 @@ class Beam(TimestampedModel):
                 | models.Q(configuration_state=ConfigurationState.VALID),
                 name="ck_beam_active_requires_valid_configuration",
             ),
+            models.CheckConstraint(
+                condition=models.Q(effective_until__isnull=True)
+                | models.Q(effective_until__gt=models.F("effective_from")),
+                name="ck_beam_effective_period",
+            ),
         ]
 
     def __str__(self) -> str:
@@ -99,6 +121,11 @@ class Beam(TimestampedModel):
         from django.urls import reverse
 
         return reverse("beams:detail", kwargs={"pk": self.pk})
+
+    @property
+    def validity(self) -> TimePeriod:
+        """This Beam's validity as a period, for the **OQ-32** containment check."""
+        return TimePeriod(self.effective_from, self.effective_until)
 
     @property
     def enabled_directions(self) -> list[BeamDirectionConfig]:
@@ -348,6 +375,11 @@ class BeamSpectrumAssignment(TimestampedModel):
 
     def __str__(self) -> str:
         return f"{self.direction_config} {self.rf_start_hz}-{self.rf_end_hz}"
+
+    @property
+    def validity(self) -> TimePeriod:
+        """This assignment's validity as a period, for the **OQ-32** containment check."""
+        return TimePeriod(self.effective_from, self.effective_until)
 
     @property
     def width_hz(self) -> int:

@@ -210,6 +210,7 @@ source_modules = [
     "calculations.bandwidth",
     "calculations.conversion",
     "calculations.gaps",
+    "calculations.periods",
     "calculations.guards",
     "calculations.ranges",
     "calculations.rounding",
