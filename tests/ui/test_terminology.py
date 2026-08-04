@@ -26,6 +26,12 @@ ALLOWED_PREFIXES = (
     "docs/adr/",
     "docs/slices/",
     "tests/ui/test_terminology.py",
+    # One file, not the directory it sits in. The OQ-25 briefing has to name the object
+    # §4 removed in order to explain why the Beam became the reuse key — that is the whole
+    # question it puts to RF engineering. The rest of docs/rf-confirmation/, including the
+    # generated intake sheets, stays in scope: an allow-list over the directory would let
+    # the term reach a column heading and nothing would notice.
+    "docs/rf-confirmation/oq-25-26-27-briefing.md",
 )
 
 FORBIDDEN_PATTERNS = {

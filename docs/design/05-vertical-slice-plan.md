@@ -65,9 +65,14 @@ S1  Foundation ──► S2 Identity/Scope/Audit ──► S3 Specification Dict
 dataclasses, not on models. This is deliberate: it lets the highest-risk logic be built and
 property-tested before any inventory data exists.
 
-**S9 is the gate.** `OQ-25` (cross-Beam reuse), `OQ-26` (remote-side equipment) and `OQ-27` (Beam
-sub-ranges) all affect the exclusion-constraint key or the Satnet Path schema. Answering them after
-S9 means migrating a constraint-bearing table with live data.
+**S9 is the gate**, and `OQ-25` (cross-Beam reuse) and `OQ-27` (Beam sub-ranges) are what it waits
+on. OQ-25 *is* the exclusion-constraint key; OQ-27 decides what "inside the Window" means for both
+containment and the gap engine. Answering either after S9 means migrating a constraint-bearing table
+with live data.
+
+`OQ-26` (remote-side equipment) is briefed alongside them but does **not** gate S9: it lands on the
+Satnet Path schema, which S11 builds, and never appears in the constraint. It was grouped with the
+other two up to S8, which overstated the gate by one answer.
 
 ---
 
@@ -84,6 +89,12 @@ exact columns the eventual import expects; a decision sheet for the policy quest
 schema consequence of each answer.
 **Not delivered.** Any value. The workbooks ship empty.
 **Open questions.** All of them — this slice exists to close them.
+**Delivered** in `docs/rf-confirmation/`, reported in `docs/slices/00-rf-confirmation-package.md`.
+Six CSV sheets and the golden-example template — one subject more than this plan named, because
+Bands carry OQ-14 and OQ-31 and those have no other container. The sheets
+are **generated from the models** by `python manage.py export_intake_templates` and pinned in both
+directions by `tests/rf_confirmation`, so "the exact columns the eventual import expects" stays true
+after the next migration instead of only on the day it was written.
 
 ---
 
@@ -213,7 +224,9 @@ scope-filtered.
 **Tests.** The whole of `tests/db/` including `test_concurrency.py` (two connections, exactly one commit) and `test_exclusion_*`; gap-engine tests for free intervals, widths, nearest allocations, total free bandwidth, largest gap and utilisation.
 **Acceptance.** §26.11, §26.14, §26.15.
 **ADRs.** 0007 PostgreSQL exclusion constraints, 0009 calculated free capacity, 0017 suspended reservation policy.
-**Open questions.** **OQ-25, OQ-26, OQ-27 must be answered before this slice starts.** Also OQ-08, OQ-24, OQ-34.
+**Open questions.** **OQ-25 and OQ-27 must be answered before this slice starts** — see
+`docs/rf-confirmation/oq-25-26-27-briefing.md`. OQ-26 is briefed with them but lands on S11. Also
+OQ-08, OQ-24, OQ-34.
 
 ---
 

@@ -1,0 +1,40 @@
+{
+  "name": "",
+  "source": "",
+  "direction": "",
+  "symbol_rate_sps": null,
+  "occupied_bandwidth_hz": null,
+  "rolloff": "",
+  "uplink_centre_hz": null,
+  "guard": {
+    "mode": "",
+    "left_hz": null,
+    "right_hz": null,
+    "percent_left": null,
+    "percent_right": null
+  },
+  "translation": {
+    "method": "",
+    "constant_hz": null,
+    "spectral_inversion": false
+  },
+  "expect": {
+    "occupied_bandwidth_hz": null,
+    "uplink_occupied": [
+      null,
+      null
+    ],
+    "uplink_allocated": [
+      null,
+      null
+    ],
+    "downlink_occupied": [
+      null,
+      null
+    ],
+    "downlink_allocated": [
+      null,
+      null
+    ]
+  }
+}

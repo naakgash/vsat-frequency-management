@@ -261,5 +261,16 @@ activation — acceptance criterion §26.20 requires that unresolved RF rules be
 guessed, and Phase 0 of the roadmap (§23) exists precisely to close §3.1 before Phase 9 cutover.
 
 The items in §3.3 are different in kind: **OQ-25**, **OQ-26** and **OQ-27** can change the database
-schema and the exclusion-constraint key. They should be answered before Slice 8 (the reservation
-engine) rather than before cutover.
+schema. They should be answered during the build rather than before cutover.
+
+Two of them gate one slice. **OQ-25** and **OQ-27** must be answered before **S9**, the reservation
+engine: OQ-25 *is* the exclusion-constraint key, and OQ-27 decides what "inside the Window" means for
+both containment and the gap engine. Answering either afterwards means altering a constraint-bearing
+table that holds live allocations.
+
+**OQ-26 does not gate S9.** Remote-terminal equipment adds a second profile reference and a second IF
+range to `SatnetPath`, which **S11** builds; it does not appear in the overlap constraint. It was
+grouped with the other two throughout the design pass and in every slice report up to S8, which
+overstated the gate by one answer. `docs/rf-confirmation/oq-25-26-27-briefing.md` puts all three to
+RF engineering together, because they are discussed together, while saying which two the next slice
+is actually waiting on.

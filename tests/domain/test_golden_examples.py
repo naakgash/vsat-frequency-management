@@ -150,6 +150,14 @@ def _guard_policy(guard: dict | None) -> GuardPolicySpec | None:
         label="golden example",
         fixed_left_hz=guard.get("left_hz"),
         fixed_right_hz=guard.get("right_hz"),
-        percent_left=Decimal(guard["percent_left"]) if "percent_left" in guard else None,
-        percent_right=Decimal(guard["percent_right"]) if "percent_right" in guard else None,
+        # Tested on the value, not on the key. A FIXED-mode example written from the S0
+        # intake template carries `"percent_left": null` — the engineer left the percentage
+        # columns blank, which is the correct answer for that mode — and keying on presence
+        # would try to build a Decimal from None and crash on a well-formed file.
+        percent_left=_optional_decimal(guard.get("percent_left")),
+        percent_right=_optional_decimal(guard.get("percent_right")),
     )
+
+
+def _optional_decimal(value: str | int | None) -> Decimal | None:
+    return None if value is None else Decimal(str(value))
