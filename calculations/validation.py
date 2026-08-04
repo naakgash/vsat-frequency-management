@@ -15,8 +15,10 @@ from __future__ import annotations
 import dataclasses
 import enum
 
+from calculations.conversion import ProfileMatch
 from calculations.ranges import FrequencyRange
-from calculations.types import Placement
+from calculations.translation import TranslationSpec
+from calculations.types import Placement, TwoSidedPlacement
 
 
 class Severity(enum.StrEnum):
@@ -68,6 +70,138 @@ def check_placement(
     if band is not None:
         findings += _check_band_advisory(placement, band)
     return findings
+
+
+def check_two_sided(
+    placement: TwoSidedPlacement,
+    *,
+    uplink_window: FrequencyRange | None = None,
+    downlink_window: FrequencyRange | None = None,
+    uplink_edge_guard_hz: int = 0,
+    downlink_edge_guard_hz: int = 0,
+) -> list[Finding]:
+    """Both legs of a Satnet Path, checked together. ADR-0006.
+
+    Checking them separately would miss the thing that matters most: a transmission that
+    fits its uplink Window perfectly and falls outside the downlink Window is not placeable,
+    and the uplink check alone says it is. §8.1 makes *both* reservations exclusive, so both
+    have to hold.
+
+    Finding codes are prefixed with the leg, because "OUTSIDE_WINDOW" on a two-sided result
+    does not say which window.
+    """
+    findings: list[Finding] = []
+    findings += _prefixed(
+        "UPLINK",
+        check_placement(
+            placement.uplink, window=uplink_window, min_edge_guard_hz=uplink_edge_guard_hz
+        ),
+    )
+    findings += _prefixed(
+        "DOWNLINK",
+        check_placement(
+            placement.downlink,
+            window=downlink_window,
+            min_edge_guard_hz=downlink_edge_guard_hz,
+        ),
+    )
+
+    if not placement.widths_agree:
+        findings.append(
+            Finding(
+                code="SIDES_DISAGREE",
+                severity=Severity.ERROR,
+                message=(
+                    f"The uplink reserves {placement.uplink.allocated.width_hz} Hz and the "
+                    f"downlink reserves {placement.downlink.allocated.width_hz} Hz. A "
+                    f"translation preserves width, so the two sides were computed "
+                    f"independently rather than one from the other."
+                ),
+                reference="section 13.7, ADR-0006",
+            )
+        )
+
+    return findings
+
+
+def check_translation(spec: TranslationSpec) -> list[Finding]:
+    """Is the Payload Path's own arithmetic self-consistent?
+
+    Separate from the placement checks because it is a property of the *master data*, not
+    of any one transmission: the same finding applies to every allocation on that path, and
+    reporting it once against the path is more useful than repeating it per placement.
+    """
+    if spec.is_contradictory:
+        return [
+            Finding(
+                code="INVERSION_WITHOUT_REFLECTION",
+                severity=Severity.ERROR,
+                message=(
+                    f"Payload path {spec.label or spec.method} is recorded as inverting the "
+                    f"spectrum, but {spec.method} is an offset and preserves the order of "
+                    f"frequencies. An inverting path needs a reflection constant; there is "
+                    f"no way to compute the inversion from an offset, so the translation "
+                    f"cannot be trusted either way."
+                ),
+                reference="section 13.7, OQ-02",
+            )
+        ]
+    return []
+
+
+def check_conversion(match: ProfileMatch, *, band: FrequencyRange | None = None) -> list[Finding]:
+    """An equipment profile evaluated against an RF interval. Specification section 13.5."""
+    findings: list[Finding] = []
+
+    if not match.is_usable:
+        findings.append(
+            Finding(
+                code="NO_EQUIPMENT_MATCH",
+                severity=Severity.ERROR,
+                message=(
+                    f"Profile {match.profile.code} cannot carry this transmission: "
+                    f"{match.rejected_because}."
+                ),
+                reference="section 13.5",
+            )
+        )
+        return findings
+
+    assert match.intermediate is not None  # guaranteed by is_usable
+    if band is not None and not band.contains(match.intermediate):
+        findings.append(
+            Finding(
+                code="IF_OUTSIDE_BAND",
+                severity=Severity.WARNING,
+                message=(
+                    f"The intermediate frequency {match.intermediate} falls outside the "
+                    f"expected IF band {band}. The profile's own limits accept it, and they "
+                    f"are the authority — this is a flag for review."
+                ),
+                reference="section 13.5",
+            )
+        )
+
+    if match.profile.inverts:
+        findings.append(
+            Finding(
+                code="EQUIPMENT_INVERTS",
+                severity=Severity.WARNING,
+                message=(
+                    f"Profile {match.profile.code} inverts the spectrum, so the low edge of "
+                    f"the RF interval becomes the high edge of the IF interval. This is "
+                    f"normal for high-side injection and is reported so a plot is not read "
+                    f"the wrong way round."
+                ),
+                reference="section 13.5, A-10",
+            )
+        )
+
+    return findings
+
+
+def _prefixed(leg: str, findings: list[Finding]) -> list[Finding]:
+    return [dataclasses.replace(f, code=f"{leg}_{f.code}") for f in findings]
 
 
 def blocking(findings: list[Finding]) -> list[Finding]:

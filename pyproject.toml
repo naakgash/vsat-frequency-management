@@ -191,9 +191,11 @@ name = "the calculation engine is pure"
 type = "forbidden"
 source_modules = [
     "calculations.bandwidth",
+    "calculations.conversion",
     "calculations.guards",
     "calculations.ranges",
     "calculations.rounding",
+    "calculations.translation",
     "calculations.types",
     "calculations.units",
     "calculations.validation",

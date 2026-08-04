@@ -210,3 +210,79 @@ def test_the_preview_writes_nothing(client):
     client.post(PREVIEW, _payload())
 
     assert AuditEvent.objects.count() == before
+
+
+# ---------------------------------------------------------------------------
+# Both sides of the payload — S7
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_a_translation_produces_both_sides(client):
+    """ADR-0006. The far side is the image of the entered side, not a second calculation."""
+    _sign_in(client, make_observer())
+
+    response = client.post(
+        PREVIEW,
+        _payload(translation_method="OFFSET_SUBTRACT", translation_constant_hz="10000"),
+    )
+
+    both = response.context["both_sides"]
+    assert both is not None
+    assert both.uplink.occupied.start_hz == 29_138_250_000
+    assert both.downlink.occupied.start_hz == 19_138_250_000
+    assert both.widths_agree
+
+
+@pytest.mark.django_db
+def test_no_translation_leaves_the_preview_one_sided(client):
+    """A payload translation is optional: the engine is useful before a Payload Path
+    exists, which is most of why this screen was built this early."""
+    _sign_in(client, make_observer())
+
+    response = client.post(PREVIEW, _payload())
+
+    assert response.context["both_sides"] is None
+
+
+@pytest.mark.django_db
+def test_a_method_without_a_constant_is_refused(client):
+    """Translating by zero is not "no translation" — it is a downlink sitting exactly on
+    top of its uplink, and it would look like a deliberate answer."""
+    _sign_in(client, make_observer())
+
+    response = client.post(PREVIEW, _payload(translation_method="OFFSET_ADD"))
+
+    assert response.status_code == 400
+    assert "Required when a translation method is selected" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_an_inverting_path_is_shown_as_inverting(client):
+    """So a plot drawn left-to-right on both sides is not read the wrong way round."""
+    _sign_in(client, make_observer())
+
+    response = client.post(
+        PREVIEW,
+        _payload(translation_method="LO_REFLECT", translation_constant_hz="49000"),
+    )
+
+    assert response.context["both_sides"].inverted
+    assert "reverses the spectrum" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_path_flagged_as_inverting_without_a_reflection_is_reported(client):
+    """The contradiction the engine cannot resolve, surfaced rather than guessed at."""
+    _sign_in(client, make_observer())
+
+    response = client.post(
+        PREVIEW,
+        _payload(
+            translation_method="OFFSET_ADD",
+            translation_constant_hz="1000",
+            translation_inverts="on",
+        ),
+    )
+
+    codes = {f.code for f in response.context["findings"]}
+    assert "INVERSION_WITHOUT_REFLECTION" in codes
+    assert not response.context["is_placeable"]

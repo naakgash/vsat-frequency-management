@@ -16,11 +16,13 @@ The rounding at each step is **A-09**, implemented once in :mod:`calculations.ro
 
 from __future__ import annotations
 
+import dataclasses
 from decimal import Decimal
 
 from calculations import rounding
 from calculations.ranges import FrequencyRange
-from calculations.types import BandwidthRequest, GuardWidths, Placement
+from calculations.translation import TranslationSpec, translate, untranslate
+from calculations.types import BandwidthRequest, GuardWidths, Placement, TwoSidedPlacement
 
 
 def occupied_bandwidth_hz(symbol_rate_sps: int, rolloff: Decimal) -> int:
@@ -119,6 +121,55 @@ def place(*, request: BandwidthRequest, centre_hz: int, guards: GuardWidths) -> 
         occupied=occupied,
         allocated=allocated_range(occupied, guards),
         guards=guards,
+    )
+
+
+def place_both_sides(
+    *,
+    request: BandwidthRequest,
+    centre_hz: int,
+    guards: GuardWidths,
+    translation: TranslationSpec,
+    entered_side: str = "UPLINK",
+) -> TwoSidedPlacement:
+    """Place a transmission on both legs of a payload. ADR-0006.
+
+    One side is calculated and the other is its **image**, never a second independent
+    calculation. §13.7's translation preserves width exactly, so deriving the far side by
+    moving the interval whole keeps the two consistent to the Hz. Recomputing it from a
+    translated centre would re-round the half-width and could differ by one Hz — which is
+    enough to make an allocation that fits on one side fail containment on the other.
+
+    ``entered_side`` says which leg ``centre_hz`` refers to. §9.3 lets the canonical entry
+    side differ by direction (**OQ-28**), so both are supported and neither is assumed.
+    """
+    entered = place(request=request, centre_hz=centre_hz, guards=guards)
+
+    if entered_side == "UPLINK":
+        uplink, downlink = entered, _image_of(entered, translation, forward=True)
+    else:
+        downlink, uplink = entered, _image_of(entered, translation, forward=False)
+
+    return TwoSidedPlacement(
+        uplink=uplink,
+        downlink=downlink,
+        entered_side=entered_side,
+        inverted=translation.inverts,
+    )
+
+
+def _image_of(source: Placement, translation: TranslationSpec, *, forward: bool) -> Placement:
+    """The same transmission seen on the other leg.
+
+    Everything except the two ranges is unchanged: the symbol rate, the roll-off, the
+    occupied bandwidth and the guards describe the transmission, not the leg it is
+    observed on. Only its position moves.
+    """
+    move = translate if forward else untranslate
+    return dataclasses.replace(
+        source,
+        occupied=move(source.occupied, translation),
+        allocated=move(source.allocated, translation),
     )
 
 

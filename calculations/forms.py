@@ -14,6 +14,7 @@ from typing import Any
 from django import forms
 
 from calculations import units
+from calculations.translation import TranslationMethod, TranslationSpec
 from calculations.types import (
     BandwidthRequest,
     GuardMode,
@@ -112,6 +113,24 @@ class PreviewForm(forms.Form):
     window_end_hz = MegahertzField(required=False, label="Window end")
     min_edge_guard_hz = MegahertzField(required=False, label="Window minimum edge guard")
 
+    translation_method = forms.ChoiceField(
+        choices=[("", "No translation — one side only")]
+        + [(m.value, m.value.replace("_", " ").title()) for m in TranslationMethod],
+        required=False,
+        label="Payload translation",
+        help_text="Methods and constants for real payloads are OQ-02; none are supplied.",
+    )
+    translation_constant_hz = MegahertzField(
+        required=False,
+        label="Translation constant",
+        help_text="In MHz. The offset, or the reflection constant for an inverting path.",
+    )
+    translation_inverts = forms.BooleanField(
+        required=False,
+        label="Path is recorded as inverting",
+        help_text="Set independently of the method, as the Payload Path model stores it.",
+    )
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
@@ -146,7 +165,24 @@ class PreviewForm(forms.Form):
             self.add_error("window_end_hz", "The window start must be below its end.")
 
         self._clean_guard(cleaned)
+        self._clean_translation(cleaned)
         return cleaned
+
+    def _clean_translation(self, cleaned: dict[str, Any]) -> None:
+        """A translation needs both a method and a constant, or neither.
+
+        A method without a constant would translate by zero, which is not "no translation"
+        — it is a downlink sitting exactly on top of its uplink, and it would look like a
+        deliberate answer.
+        """
+        method = cleaned.get("translation_method")
+        constant = cleaned.get("translation_constant_hz")
+        if method and constant is None:
+            self.add_error(
+                "translation_constant_hz", "Required when a translation method is selected."
+            )
+        elif not method and constant is not None:
+            self.add_error("translation_method", "Select a method for this constant.")
 
     def _clean_guard(self, cleaned: dict[str, Any]) -> None:
         """Mirror the mode/value rule that GuardPolicySpec and the database both enforce."""
@@ -190,6 +226,18 @@ class PreviewForm(forms.Form):
             fixed_right_hz=self.cleaned_data.get("guard_fixed_right_hz"),
             percent_left=self.cleaned_data.get("guard_percent_left"),
             percent_right=self.cleaned_data.get("guard_percent_right"),
+        )
+
+    def translation(self) -> TranslationSpec | None:
+        method = self.cleaned_data.get("translation_method")
+        constant = self.cleaned_data.get("translation_constant_hz")
+        if not method or constant is None:
+            return None
+        return TranslationSpec(
+            method=TranslationMethod(method),
+            constant_hz=constant,
+            spectral_inversion=self.cleaned_data.get("translation_inverts", False),
+            label="Preview path",
         )
 
     def window_bounds(self) -> tuple[int, int] | None:
