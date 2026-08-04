@@ -41,7 +41,7 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Type check
-        run: uv run mypy config operations audit accounts specifications inventory
+        run: uv run mypy config operations audit accounts specifications inventory calculations
 
       - name: Module dependency direction
         run: uv run lint-imports

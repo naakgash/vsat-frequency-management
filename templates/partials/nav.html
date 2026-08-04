@@ -31,6 +31,16 @@ Each becomes a real link in the slice named in its title attribute.
                href="{% url 'inventory:index' %}">Inventory</a>
           </li>
         {% endif %}
+        {% comment %}
+        Not in the section 7 order, because it is not one of the product's sections: the
+        Engineering Preview is a sandbox over the calculation engine that saves nothing.
+        It sits at the end, after the real navigation, so it reads as a tool rather than
+        as a stage of the workflow.
+        {% endcomment %}
+        <li class="nav-item">
+          <a class="nav-link{% if request.resolver_match.app_name == 'calculations' %} active{% endif %}"
+             href="{% url 'calculations:preview' %}">Engineering Preview</a>
+        </li>
         <li class="nav-item"><span class="nav-link disabled" title="Delivered in slices S14 and S15">Imports &amp; Exports</span></li>
         <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S16">Audit</span></li>
         {% comment %}

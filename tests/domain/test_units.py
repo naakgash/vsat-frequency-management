@@ -12,7 +12,7 @@ from decimal import Decimal
 import pytest
 from django.template import Context, Template
 
-from inventory import units
+from calculations import units
 
 
 @pytest.mark.parametrize(

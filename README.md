@@ -6,13 +6,15 @@ Replaces spreadsheet-based frequency planning with a controlled multi-user appli
 the hierarchy `Satellite → Beam → Satnet → Satnet Path`, with derived engineering values, guided
 operator workflows, and overlap prevention enforced at the UI, service and PostgreSQL layers.
 
-**Status:** Slices **S1–S5** delivered. Application foundation, PostgreSQL 16 with the required
+**Status:** Slices **S1–S6** delivered. Application foundation, PostgreSQL 16 with the required
 extensions, health endpoints, the English interface shell, CI guard rails, authentication with four
 roles behind a single backend authorization choke point, an append-only audit trail, the
 admin-managed Specification Dictionary with its accessible information popover, the independent
 inventory entities with object-level scope, and dependent inventory — Frequency Windows and Payload
-Paths as effective-dated master data that is superseded rather than overwritten. The calculation
-engine begins at S6; see the [slice plan](docs/design/05-vertical-slice-plan.md) for what lands when.
+Paths as effective-dated master data that is superseded rather than overwritten, and the pure
+calculation engine — bandwidth, edges and guards — with an Engineering Preview screen that exercises
+it. Translation and IF conversion begin at S7; see the
+[slice plan](docs/design/05-vertical-slice-plan.md) for what lands when.
 
 The inventory ships **empty** — no satellite, band, window, translation, polarization mapping or
 guard value. Every value it would hold is an unresolved RF engineering question, and a
@@ -79,14 +81,18 @@ exist in SQLite, so a green SQLite suite would prove nothing about the behaviour
 | S3 — Specification Dictionary | [docs/slices/03-specification-dictionary.md](docs/slices/03-specification-dictionary.md) | §26.2, §26.3 met; §26.20 enforced by test |
 | S4 — Independent Inventory | [docs/slices/04-independent-inventory.md](docs/slices/04-independent-inventory.md) | §26.4 met; §26.20 enforced by test; settles OQ-30 |
 | S5 — Dependent Inventory and Versioning | [docs/slices/05-dependent-inventory.md](docs/slices/05-dependent-inventory.md) | §26.4 extended; §26.15, §26.17 advanced; §26.20 enforced by test |
+| S6 — Calculation Engine | [docs/slices/06-calculation-engine.md](docs/slices/06-calculation-engine.md) | §26.10 partial; §26.16 met for bandwidth, edges and guards |
 
 ## Architecture decisions
 
 - [ADR-0001 — Modular monolith](docs/adr/0001-modular-monolith.md)
 - [ADR-0002 — Server-rendered Django with HTMX](docs/adr/0002-django-htmx-server-rendered.md)
 - [ADR-0003 — Integer Hz and Decimal roll-off](docs/adr/0003-integer-hz-and-decimal-rolloff.md)
+- [ADR-0008 — Half-open ranges, including through spectral inversion](docs/adr/0008-half-open-ranges.md)
+- [ADR-0010 — One calculation engine, and it is pure](docs/adr/0010-central-calculation-engine.md)
 - [ADR-0011 — Specification Dictionary as the single source of field wording](docs/adr/0011-specification-dictionary.md)
 - [ADR-0012 — Master data is superseded, not overwritten](docs/adr/0012-master-data-versioning.md)
+- [ADR-0016 — Guard policies resolve through a fixed hierarchy](docs/adr/0016-guard-policy-hierarchy.md)
 - [ADR-0013 — Append-only audit, enforced by the database](docs/adr/0013-append-only-audit.md)
 
 ## Before implementation starts

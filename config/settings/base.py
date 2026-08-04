@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     # docs/design/01-repository-structure.md section 1: cross-cutting modules first.
     "audit",
     "accounts",
+    "calculations",
     "specifications",
     "inventory",
     "operations",

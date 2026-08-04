@@ -126,13 +126,28 @@ django_settings_module = "config.settings.test"
 # docs/design/01-repository-structure.md section 1 for the full target graph.
 # ---------------------------------------------------------------------------
 [tool.importlinter]
-root_packages = ["config", "operations", "accounts", "audit", "specifications", "inventory"]
+root_packages = [
+    "config",
+    "operations",
+    "accounts",
+    "audit",
+    "specifications",
+    "inventory",
+    "calculations",
+]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "config is the composition root and nothing imports it"
 type = "forbidden"
-source_modules = ["operations", "accounts", "audit", "specifications", "inventory"]
+source_modules = [
+    "operations",
+    "accounts",
+    "audit",
+    "specifications",
+    "inventory",
+    "calculations",
+]
 forbidden_modules = ["config"]
 
 [[tool.importlinter.contracts]]
@@ -141,7 +156,13 @@ forbidden_modules = ["config"]
 name = "audit is the lowest layer and imports no other local module"
 type = "forbidden"
 source_modules = ["audit"]
-forbidden_modules = ["accounts", "operations", "specifications", "inventory"]
+forbidden_modules = [
+    "accounts",
+    "operations",
+    "specifications",
+    "inventory",
+    "calculations",
+]
 
 [[tool.importlinter.contracts]]
 # accounts is cross-cutting: domain modules import it, never the reverse. This is why
@@ -150,9 +171,39 @@ forbidden_modules = ["accounts", "operations", "specifications", "inventory"]
 name = "accounts does not import domain modules"
 type = "forbidden"
 source_modules = ["accounts"]
-forbidden_modules = ["operations", "specifications", "inventory"]
+forbidden_modules = ["operations", "specifications", "inventory", "calculations"]
 
 [[tool.importlinter.contracts]]
 name = "module layering"
 type = "layers"
-layers = ["operations", "inventory", "specifications", "accounts", "audit"]
+layers = ["operations", "inventory", "specifications", "calculations", "accounts", "audit"]
+
+[[tool.importlinter.contracts]]
+# The reason S6 could be built before any inventory data existed, and the reason its
+# property tests run in milliseconds without a database. Every formula in the product
+# lives in these modules, and none of them may reach a model, a setting or a request.
+#
+# Django itself is forbidden, not merely Django models: importing `django.conf.settings`
+# would make the arithmetic depend on configuration, and a rounding policy that varies by
+# environment is not a policy. calculations/{forms,views,urls,apps}.py are deliberately
+# absent from this list — they are the Django surface over the engine, not the engine.
+name = "the calculation engine is pure"
+type = "forbidden"
+source_modules = [
+    "calculations.bandwidth",
+    "calculations.guards",
+    "calculations.ranges",
+    "calculations.rounding",
+    "calculations.types",
+    "calculations.units",
+    "calculations.validation",
+]
+forbidden_modules = [
+    "django",
+    "config",
+    "accounts",
+    "audit",
+    "inventory",
+    "operations",
+    "specifications",
+]

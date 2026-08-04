@@ -12,7 +12,7 @@ from typing import Any, cast
 from django import forms
 from django.forms import ModelChoiceField
 
-from inventory import units
+from calculations import units
 from inventory.models import (
     Band,
     EquipmentProfile,
@@ -28,7 +28,7 @@ from inventory.models import (
 class MegahertzField(forms.DecimalField):
     """A frequency entered in MHz and stored as integer Hz.
 
-    Exact throughout: :mod:`inventory.units` parses the value as ``Decimal``, scales it by
+    Exact throughout: :mod:`calculations.units` parses the value as ``Decimal``, scales it by
     an integer, and refuses anything finer than 1 Hz. Specification section 14.1 forbids
     binary floating point for engineering values, and silently rounding sub-Hz input would
     be a quiet way to reintroduce it.

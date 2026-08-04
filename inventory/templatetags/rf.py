@@ -1,6 +1,6 @@
 """Display filters for radio-frequency values.
 
-The read side of :mod:`inventory.units`. A window's edges are stored as integer Hz and
+The read side of :mod:`calculations.units`. A window's edges are stored as integer Hz and
 shown as MHz, and ``{{ window.rf_start_hz|mhz }}`` is the only sanctioned way to do that
 in a template — never arithmetic in the template itself, which would be performed in
 whatever numeric type the template engine happens to pick.
@@ -13,7 +13,7 @@ from typing import Any
 
 from django import template
 
-from inventory import units
+from calculations import units
 
 register = template.Library()
 
