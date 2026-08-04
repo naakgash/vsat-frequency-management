@@ -22,7 +22,8 @@ from django.views.generic import View
 from calculations import bandwidth, guards, validation
 from calculations.forms import PreviewForm
 from calculations.ranges import FrequencyRange
-from calculations.types import Placement
+from calculations.translation import TranslationSpec
+from calculations.types import Placement, TwoSidedPlacement
 
 
 class PreviewView(LoginRequiredMixin, View):
@@ -43,13 +44,27 @@ class PreviewView(LoginRequiredMixin, View):
         if not form.is_valid():
             return render(request, self.template_name, {"form": form}, status=400)
 
-        placement = self._calculate(form)
         window = self._window(form)
-        findings = validation.check_placement(
-            placement,
-            window=window,
-            min_edge_guard_hz=form.cleaned_data.get("min_edge_guard_hz") or 0,
-        )
+        edge_guard = form.cleaned_data.get("min_edge_guard_hz") or 0
+        translation = form.translation()
+
+        if translation is None:
+            placement = self._calculate(form)
+            findings = validation.check_placement(
+                placement, window=window, min_edge_guard_hz=edge_guard
+            )
+            both_sides = None
+        else:
+            both_sides = self._calculate_both_sides(form, translation)
+            placement = both_sides.uplink
+            # The supplied window is the *uplink* window: the preview has one Window field,
+            # and the entered side is the one it describes. A downlink window would need a
+            # second pair of fields, which belongs with the real Payload Path in S11 rather
+            # than on a sandbox.
+            findings = validation.check_two_sided(
+                both_sides, uplink_window=window, uplink_edge_guard_hz=edge_guard
+            )
+            findings += validation.check_translation(translation)
 
         return render(
             request,
@@ -57,6 +72,8 @@ class PreviewView(LoginRequiredMixin, View):
             {
                 "form": form,
                 "placement": placement,
+                "both_sides": both_sides,
+                "translation": translation,
                 "window": window,
                 "findings": findings,
                 "blocking": validation.blocking(findings),
@@ -76,6 +93,18 @@ class PreviewView(LoginRequiredMixin, View):
             request=request,
             centre_hz=form.cleaned_data["centre_hz"],
             guards=widths,
+        )
+
+    @staticmethod
+    def _calculate_both_sides(form: PreviewForm, translation: TranslationSpec) -> TwoSidedPlacement:
+        request = form.bandwidth_request()
+        _, occupied_bw = bandwidth.resolve_request(request)
+        widths = guards.resolve(form.guard_policy(), occupied_bw)
+        return bandwidth.place_both_sides(
+            request=request,
+            centre_hz=form.cleaned_data["centre_hz"],
+            guards=widths,
+            translation=translation,
         )
 
     @staticmethod

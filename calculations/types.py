@@ -164,3 +164,52 @@ class Placement:
         value, so its width is even and the midpoint is a whole Hz.
         """
         return self.occupied.start_hz + self.occupied.width_hz // 2
+
+
+@dataclasses.dataclass(frozen=True)
+class TwoSidedPlacement:
+    """One transmission as it appears on both sides of the payload. ADR-0006.
+
+    A Satnet Path occupies spectrum on an uplink leg *and* on a downlink leg, and §8.1
+    makes each of those exclusive. Both therefore have to be reserved, and both have to be
+    derived from the same request — a downlink computed independently from its own centre
+    would drift from the uplink it is supposed to be the image of.
+
+    The uplink is the source and the downlink is derived, or the reverse, depending on
+    which side the operator entered (**OQ-28**). Either way exactly one of them is
+    calculated from the other, never both from scratch.
+    """
+
+    uplink: Placement
+    downlink: Placement
+    #: Which side the operator supplied. The other was derived from it.
+    entered_side: str = "UPLINK"
+    #: Whether the payload reversed the spectrum between the two sides.
+    #:
+    #: Carried rather than derived, and that is not laziness. Translation preserves width,
+    #: so *any* downlink interval reachable by a reflection is equally reachable by a
+    #: shift: given ``[a, b)`` and a same-width ``[c, d)``, both ``shift(c - a)`` and
+    #: ``reflect(c + b)`` produce it. The pair of intervals therefore contains no evidence
+    #: of which happened. Only the Payload Path knows, so the flag comes from the spec and
+    #: is recorded here.
+    #:
+    #: It matters downstream: under inversion the operator's "low edge" on one side is the
+    #: high edge on the other, and a spectrum plot that draws both sides left-to-right
+    #: without knowing this shows the transmission mirrored.
+    inverted: bool = False
+    #: Present when the transmission was also converted to an intermediate frequency.
+    intermediate: FrequencyRange | None = None
+    equipment_code: str = ""
+
+    @property
+    def widths_agree(self) -> bool:
+        """Both sides reserve the same amount of spectrum.
+
+        Translation preserves width, so a disagreement means the two sides were computed
+        independently rather than one from the other — the failure ADR-0006 exists to make
+        impossible.
+        """
+        return (
+            self.uplink.occupied.width_hz == self.downlink.occupied.width_hz
+            and self.uplink.allocated.width_hz == self.downlink.allocated.width_hz
+        )

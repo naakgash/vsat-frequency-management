@@ -61,6 +61,27 @@
         {% endif %}{% endfor %}
       </div></div>
 
+      <div class="card mb-3"><div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Payload translation</h2>
+        <p class="small text-body-secondary">
+          Optional. Supply a method and a constant to see the far side of the payload as
+          well. Real methods and constants are an open question (OQ-02); none are supplied.
+        </p>
+        {% for field in form %}{% if field.name in "translation_method,translation_constant_hz,translation_inverts" %}
+          <div class="mb-3{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}">
+            {% if field.field.widget.input_type == "checkbox" %}
+              {{ field }}
+              <label for="{{ field.id_for_label }}" class="form-check-label">{{ field.label }}</label>
+            {% else %}
+              <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+              {{ field }}
+            {% endif %}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        {% endif %}{% endfor %}
+      </div></div>
+
       <button type="submit" class="btn btn-primary">Calculate</button>
     </form>
   </div>
@@ -95,6 +116,74 @@
           edge does not. The allocated range is what an overlap check compares.
         </p>
       </div></div>
+
+      {% if both_sides %}
+        <div class="card mb-3"><div class="card-body">
+          <h2 class="h6 card-title text-uppercase text-body-secondary">Both sides of the payload</h2>
+          <p class="small text-body-secondary">
+            The far side is the <em>image</em> of the entered side, not a second
+            calculation. A translation preserves width exactly, so moving the interval whole
+            keeps the two consistent to the Hz — recomputing it from a translated centre
+            could differ by one, which is enough to make an allocation fit on one side and
+            fail on the other.
+          </p>
+          <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+            <caption class="visually-hidden">Uplink and downlink ranges</caption>
+            <thead><tr>
+              <th scope="col">Leg</th>
+              <th scope="col" class="text-end rf-value">Occupied (MHz)</th>
+              <th scope="col" class="text-end rf-value">Allocated (MHz)</th>
+              <th scope="col" class="text-end rf-value">Width (MHz)</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <th scope="row" class="fw-normal">
+                  Uplink
+                  {% if both_sides.entered_side == "UPLINK" %}
+                    <span class="badge text-bg-secondary">Entered</span>
+                  {% endif %}
+                </th>
+                <td class="text-end rf-value">
+                  [{{ both_sides.uplink.occupied.start_hz|mhz }}, {{ both_sides.uplink.occupied.end_hz|mhz }})
+                </td>
+                <td class="text-end rf-value">
+                  [{{ both_sides.uplink.allocated.start_hz|mhz }}, {{ both_sides.uplink.allocated.end_hz|mhz }})
+                </td>
+                <td class="text-end rf-value">{{ both_sides.uplink.allocated_bandwidth_hz|mhz }}</td>
+              </tr>
+              <tr>
+                <th scope="row" class="fw-normal">
+                  Downlink
+                  {% if both_sides.entered_side == "DOWNLINK" %}
+                    <span class="badge text-bg-secondary">Entered</span>
+                  {% endif %}
+                </th>
+                <td class="text-end rf-value">
+                  [{{ both_sides.downlink.occupied.start_hz|mhz }}, {{ both_sides.downlink.occupied.end_hz|mhz }})
+                </td>
+                <td class="text-end rf-value">
+                  [{{ both_sides.downlink.allocated.start_hz|mhz }}, {{ both_sides.downlink.allocated.end_hz|mhz }})
+                </td>
+                <td class="text-end rf-value">{{ both_sides.downlink.allocated_bandwidth_hz|mhz }}</td>
+              </tr>
+            </tbody>
+          </table></div>
+
+          {% if both_sides.inverted %}
+            <p class="small mt-3 mb-0">
+              <span class="badge text-bg-warning">Inverting</span>
+              This path reverses the spectrum: the low edge of the uplink is the
+              <strong>high</strong> edge of the downlink. A plot drawn left-to-right on both
+              sides shows the transmission mirrored.
+            </p>
+          {% endif %}
+          {% if not both_sides.widths_agree %}
+            <p class="small text-danger mt-3 mb-0">
+              The two sides reserve different widths, which a translation cannot produce.
+            </p>
+          {% endif %}
+        </div></div>
+      {% endif %}
 
       <div class="card mb-3"><div class="card-body">
         <h2 class="h6 card-title text-uppercase text-body-secondary">How it was calculated</h2>
