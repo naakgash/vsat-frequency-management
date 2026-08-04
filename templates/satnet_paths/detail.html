@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load rf %}
+{% block title %}{{ path.code }} &middot; Satnet Paths{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'satnet_paths:list' %}">Satnet Paths</a></li>
+  <li class="breadcrumb-item active" aria-current="page">{{ path.code }}</li>
+</ol></nav>
+
+<h1 class="h3">{{ path.code }} <span class="badge text-bg-light border">{{ path.get_status_display }}</span></h1>
+<p class="text-body-secondary">
+  Revision {{ path.revision_number }} &middot; {{ path.direction }} under
+  <a href="{{ path.satnet.get_absolute_url }}">{{ path.satnet.code }}</a>
+</p>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-6">
+    <div class="card"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">What was asked for</h2>
+      <dl class="row small mb-0">
+        <dt class="col-6">Input mode</dt><dd class="col-6">{{ path.get_input_mode_display }}</dd>
+        <dt class="col-6">Input value</dt><dd class="col-6 rf-value">{{ path.input_value }}</dd>
+        <dt class="col-6">Roll-off</dt><dd class="col-6">{{ path.rolloff }}</dd>
+        <dt class="col-6">Guards</dt>
+        <dd class="col-6 rf-value">{{ path.guard_left_hz|mhz }} / {{ path.guard_right_hz|mhz }} MHz</dd>
+        <dt class="col-6">Valid</dt>
+        <dd class="col-6">
+          {{ path.valid_from|date:"Y-m-d" }} –
+          {% if path.valid_until %}{{ path.valid_until|date:"Y-m-d" }}{% else %}open{% endif %}
+        </dd>
+      </dl>
+    </div></div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">What was computed</h2>
+      <p class="small text-body-secondary">
+        Stored as at the moment of saving, never recomputed on read — the Payload Path behind
+        it is versioned, and recomputing would rewrite history when it is superseded.
+      </p>
+      <dl class="row small mb-0">
+        <dt class="col-6">Occupied bandwidth</dt><dd class="col-6 rf-value">{{ path.occupied_bw_hz|mhz }} MHz</dd>
+        <dt class="col-6">Allocated bandwidth</dt><dd class="col-6 rf-value">{{ path.allocated_bw_hz|mhz }} MHz</dd>
+        <dt class="col-6">Symbol rate</dt><dd class="col-6 rf-value">{{ path.symbol_rate_sps|default:"—" }}</dd>
+        <dt class="col-6">{{ path.canonical_leg }}</dt>
+        <dd class="col-6 rf-value">{{ path.canonical_allocated_start_hz|mhz }} – {{ path.canonical_allocated_end_hz|mhz }}</dd>
+        <dt class="col-6">{{ path.translated_leg }}</dt>
+        <dd class="col-6 rf-value">{{ path.translated_allocated_start_hz|mhz }} – {{ path.translated_allocated_end_hz|mhz }}</dd>
+      </dl>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

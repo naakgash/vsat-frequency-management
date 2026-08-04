@@ -14,12 +14,17 @@ from django.utils import timezone
 
 from beams.constants import Direction
 from beams.models import BeamDirectionSpectrumResource, BeamSpectrumAssignment
-from inventory.constants import SpectrumLeg
+from inventory.constants import SpectrumLeg, TranslationMethod
 from inventory.models import SpectrumResource
 from spectrum.constants import ReservationKind, ReservationStatus
 from spectrum.models import SpectrumReservation
 from tests.beams.factories import configure_direction, make_beam
 from tests.inventory.factories import make_frequency_window, make_payload_path
+
+#: Where the fixture's downlink band starts. An arbitrary offset with one property that
+#: matters: it is far enough from the uplink that a test reading two frequencies can tell at a
+#: glance which side it is looking at.
+DOWNLINK_BASE_HZ = 19_000_000_000
 
 
 @dataclasses.dataclass
@@ -58,6 +63,13 @@ def make_entitlement(
     # Built at the requested width rather than widened afterwards: `fk_assignment_window_edges`
     # refuses to let a window's edges move while an assignment references them, which is the
     # constraint working. Tests that want a narrower entitlement ask for one here.
+    #
+    # Both windows are built to match, and the translation maps one onto the other. A widened
+    # uplink under the factory's default 10 GHz offset would
+    # translate to a downlink outside its own window — which is a *correct* refusal, and a
+    # confusing fixture: every test would fail on containment before reaching what it meant to
+    # check.
+    downlink_start = DOWNLINK_BASE_HZ + start_hz
     path = make_payload_path(
         satellite=beam.satellite,
         code=f"PP-{code}",
@@ -70,11 +82,32 @@ def make_entitlement(
             rf_start_hz=start_hz,
             rf_end_hz=end_hz,
         ),
+        downlink_window=make_frequency_window(
+            beam.satellite,
+            f"FW-{code}-DL",
+            SpectrumLeg.REMOTE_DOWNLINK,
+            band=beam.band,
+            rf_start_hz=downlink_start,
+            rf_end_hz=DOWNLINK_BASE_HZ + end_hz,
+        ),
+        translation_method=TranslationMethod.OFFSET_ADD,
+        translation_constant_hz=DOWNLINK_BASE_HZ,
     )
     config = configure_direction(beam, Direction.FWD, payload_path=path)
     beam.direction_configs.filter(direction=Direction.RTN).update(is_enabled=False)
 
     assignment = config.spectrum_assignments.get(frequency_window=config.uplink_window)
+
+    # Master data is commissioned before it is used, and the fixtures say so. Without this the
+    # Beam, its windows and its assignments all begin at the instant the test created them, and
+    # an allocation starting "now" — truncated to the minute by a datetime-local field — starts
+    # *before* its parents and is correctly refused by the OQ-32 containment rule. A real Beam
+    # is not commissioned in the same minute its first allocation is planned.
+    commissioned = timezone.now() - timezone.timedelta(days=7)
+    beam.effective_from = commissioned
+    beam.save(update_fields=["effective_from"])
+    config.spectrum_assignments.update(effective_from=commissioned)
+    assignment.refresh_from_db()
 
     if resource is None:
         resource = SpectrumResource.objects.get(

@@ -1,0 +1,54 @@
+{% load rf %}
+{# The section 9.5 blocking message: rule, Beam, Window, proposed range, the conflicting
+   allocation, the overlap, the validity overlap, and somewhere else to go. #}
+{% for finding in findings %}
+  <div class="alert alert-danger" role="alert">
+    <h3 class="h6 alert-heading">{{ finding.message }}</h3>
+    <dl class="row small mb-0">
+      {% if finding.rule %}<dt class="col-sm-3">Rule</dt><dd class="col-sm-9">{{ finding.rule }}</dd>{% endif %}
+      {% if finding.beam_code %}<dt class="col-sm-3">Beam</dt><dd class="col-sm-9">{{ finding.beam_code }}</dd>{% endif %}
+      {% if finding.window_code %}<dt class="col-sm-3">Window</dt><dd class="col-sm-9">{{ finding.window_code }}</dd>{% endif %}
+      {% if finding.proposed %}
+        <dt class="col-sm-3">Proposed</dt>
+        <dd class="col-sm-9 rf-value">{{ finding.proposed.0|mhz }} – {{ finding.proposed.1|mhz }} MHz</dd>
+      {% endif %}
+    </dl>
+
+    {% if finding.conflicts %}
+      <hr>
+      <table class="table table-sm mb-0">
+        <caption class="visually-hidden">Conflicting allocations</caption>
+        <thead><tr>
+          <th scope="col">Resource</th><th scope="col">Leg</th>
+          <th scope="col" class="text-end rf-value">Held</th>
+          <th scope="col" class="text-end rf-value">Overlap</th>
+          <th scope="col">Both valid</th>
+        </tr></thead>
+        <tbody>
+          {% for conflict in finding.conflicts %}
+            <tr>
+              <td>{{ conflict.resource_code }}</td>
+              <td>{{ conflict.leg }}</td>
+              <td class="text-end rf-value">{{ conflict.conflicting_range.0|mhz }} – {{ conflict.conflicting_range.1|mhz }}</td>
+              <td class="text-end rf-value">{{ conflict.overlap_hz|mhz }} MHz</td>
+              <td class="small">
+                {{ conflict.validity_overlap.0|date:"Y-m-d" }} –
+                {% if conflict.validity_overlap.1 %}{{ conflict.validity_overlap.1|date:"Y-m-d" }}{% else %}open{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+
+    {% if finding.suggested_gaps %}
+      <hr>
+      <p class="small mb-1"><strong>Free spectrum on this leg:</strong></p>
+      <ul class="small mb-0">
+        {% for gap in finding.suggested_gaps %}
+          <li class="rf-value">{{ gap.0|mhz }} – {{ gap.1|mhz }} MHz</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+{% endfor %}
