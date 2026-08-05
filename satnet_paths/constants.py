@@ -32,6 +32,22 @@ PathStatus = ReservationStatus
 VIEW_SATNET_PATH = "satnet_paths.view_satnetpath"
 MANAGE_SATNET_PATHS = "satnet_paths.manage_satnet_paths"
 
+#: One capability per transition, not one "change lifecycle" capability. `docs/design/03`
+#: §2.2 names them individually because the roles genuinely differ: an Operator plans and
+#: submits, an Approver decides and retires, and collapsing them would hand the Operator the
+#: approval it exists to be separate from.
+PLAN_SATNET_PATH = "satnet_paths.plan_satnetpath"
+SUBMIT_SATNET_PATH = "satnet_paths.submit_satnetpath"
+APPROVE_SATNET_PATH = "satnet_paths.approve_satnetpath"
+REJECT_SATNET_PATH = "satnet_paths.reject_satnetpath"
+SUSPEND_SATNET_PATH = "satnet_paths.suspend_satnetpath"
+RETIRE_SATNET_PATH = "satnet_paths.retire_satnetpath"
+CANCEL_SATNET_PATH = "satnet_paths.cancel_satnetpath"
+REVISE_SATNET_PATH = "satnet_paths.revise_satnetpath"
+
 PATH_CREATED = "SATNET_PATH_CREATED"
 PATH_UPDATED = "SATNET_PATH_UPDATED"
 PATH_BLOCKED = "SATNET_PATH_BLOCKED"
+PATH_TRANSITIONED = "SATNET_PATH_TRANSITIONED"
+PATH_REVISED = "SATNET_PATH_REVISED"
+PATH_STALE = "SATNET_PATH_STALE_SUBMISSION"

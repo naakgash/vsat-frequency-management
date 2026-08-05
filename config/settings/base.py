@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "spectrum",
     "satnets",
     "satnet_paths",
+    "approvals",
     "operations",
 ]
 
@@ -178,6 +179,37 @@ LOGOUT_REDIRECT_URL = "/"
 LOGIN_FAILURE_LIMIT = int(env.optional("LOGIN_FAILURE_LIMIT", "5"))
 LOGIN_IP_FAILURE_LIMIT = int(env.optional("LOGIN_IP_FAILURE_LIMIT", "50"))
 LOGIN_LOCKOUT_SECONDS = int(env.optional("LOGIN_LOCKOUT_SECONDS", "900"))
+
+# ---------------------------------------------------------------------------
+# Allocation lifecycle policy (§15.2, §15.3)
+#
+# Two open questions whose provisional positions are settings rather than rules, so that
+# answering either is a configuration change and not a migration.
+#
+# `docs/design/02` §8 sketches a `SystemSetting` table read through
+# `operations.settings.get()`. These are Django settings instead, and deliberately: the
+# readers sit *below* `operations` in the module layering, so a database-backed store there
+# would be unreachable from the code that needs it without inverting the dependency. When a
+# settings screen arrives it can back these with a table and keep the same two names.
+# ---------------------------------------------------------------------------
+# **OQ-08**, ADR-0017. Does a SUSPENDED allocation keep its spectrum? §15.3 recommends
+# retaining, and it is the safer error: releasing means a suspension can silently become
+# unresumable when somebody else takes the gap.
+SUSPENDED_RETAINS_SPECTRUM = env.optional("SUSPENDED_RETAINS_SPECTRUM", "true").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+# **OQ-11**, §12. Must the approver be somebody other than the author? Default true —
+# separation of duties is the point of having an Approver role at all, and a platform that
+# let one person plan and approve their own transmission would make the role decorative.
+REQUIRE_SEPARATE_APPROVER = env.optional("REQUIRE_SEPARATE_APPROVER", "true").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
 # ---------------------------------------------------------------------------
 # Logging — structured, no stack traces to the user (section 21.14, 21.15)

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load utc_tags %}
+{% block title %}Changed by somebody else &middot; {{ path.code }}{% endblock %}
+{% block content %}
+<h1 class="h3">{{ path.code }} was changed while you were working</h1>
+<p class="text-body-secondary">
+  Your page was rendered against version {{ path.record_version|add:"-1" }}; the record is now
+  version {{ current_version }}. Nothing you submitted was saved (§15.5).
+</p>
+
+{% if changes %}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <caption class="small">
+        What differs between your submission and the record as it stands. Fields not listed
+        here are unchanged — you may not have to redo as much as you think.
+      </caption>
+      <thead><tr><th scope="col">Field</th><th scope="col">You submitted</th><th scope="col">It is now</th></tr></thead>
+      <tbody>
+        {% for change in changes %}
+          <tr>
+            <th scope="row" class="fw-normal"><code>{{ change.field }}</code></th>
+            <td class="rf-value">{{ change.yours|default:"—" }}</td>
+            <td class="rf-value">{{ change.theirs|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="alert alert-warning">
+    The record moved on, but none of the fields you submitted differ from what is stored. It
+    is safe to reload and try again.
+  </div>
+{% endif %}
+
+<p class="small text-body-secondary">Last changed {{ path.updated_at|utc }}.</p>
+<a class="btn btn-primary" href="{{ path.get_absolute_url }}">Reload the current version</a>
+{% endblock %}

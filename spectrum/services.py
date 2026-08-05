@@ -13,6 +13,7 @@ would go on enforcing whatever the reservation said.
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Callable
 from datetime import datetime
 
 from django.db import IntegrityError, OperationalError, transaction
@@ -170,6 +171,51 @@ def reserve(
 
 
 @transaction.atomic
+def set_status(
+    *,
+    actor: Actor,
+    satnet_path_id: str,
+    status: str,
+    suspended_retains: bool = True,
+    reason: str = "",
+) -> int:
+    """Move an allocation's occupancy rows to a new status. §15.2, **A-12**.
+
+    Two columns move together and must never disagree: ``status`` and ``reserves_spectrum``.
+    `ck_res_reserves_status` refuses the pairs that are fixed by policy, so writing one without
+    the other is not a bug that survives to production — but it *is* a bug that would abort a
+    lifecycle transaction with a constraint name instead of a message, so both are written here
+    or neither is.
+
+    Rows are saved one at a time rather than through ``queryset.update()``. A bulk update
+    bypasses nothing in the database — the constraint still fires — but it fires on the
+    statement, and the exception then names no row. Saving individually means a resumed
+    allocation that collides can say *which* piece of spectrum is now taken.
+    """
+    holds = reserves_spectrum(status, suspended_retains=suspended_retains)
+    rows = list(SpectrumReservation.objects.filter(satnet_path_id=satnet_path_id))
+
+    for row in rows:
+        row.status = status
+        row.reserves_spectrum = holds
+        _save(row)
+
+    audit_services.record(
+        action=RESERVATION_WRITTEN,
+        actor=actor,
+        after={
+            "satnet_path_id": str(satnet_path_id),
+            "rows": len(rows),
+            "status": status,
+            "reserves_spectrum": holds,
+        },
+        change_reason=reason,
+        message=f"Moved {len(rows)} spectrum reservations to {status}",
+    )
+    return len(rows)
+
+
+@transaction.atomic
 def release(*, actor: Actor, satnet_path_id: str, reason: str = "") -> int:
     """Drop every reservation belonging to one allocation.
 
@@ -200,7 +246,28 @@ def release(*, actor: Actor, satnet_path_id: str, reason: str = "") -> int:
 
 
 def _write(**values: object) -> SpectrumReservation:
-    """One `INSERT`, with both conflict shapes translated into one exception.
+    """One `INSERT`, with both conflict shapes translated into one exception."""
+    return _guarded(lambda: SpectrumReservation.objects.create(**values))
+
+
+def _save(row: SpectrumReservation) -> SpectrumReservation:
+    """One `UPDATE`, translated the same way.
+
+    An update reaches the exclusion constraint exactly as an insert does. Resuming a suspended
+    allocation whose spectrum was released and then taken is the case: the row already exists,
+    only ``reserves_spectrum`` moves, and the constraint refuses it — correctly, and for a
+    reason an operator can act on.
+    """
+    return _guarded(lambda: _persist(row))
+
+
+def _persist(row: SpectrumReservation) -> SpectrumReservation:
+    row.save(update_fields=["status", "reserves_spectrum"])
+    return row
+
+
+def _guarded(write: Callable[[], SpectrumReservation]) -> SpectrumReservation:
+    """Run one write with both conflict shapes translated into one exception.
 
     The exclusion constraint refuses an overlap in two different ways depending on whether the
     competing row is already committed or is being written right now, and a caller that only
@@ -208,7 +275,7 @@ def _write(**values: object) -> SpectrumReservation:
     operators are actually working at the same time.
     """
     try:
-        return SpectrumReservation.objects.create(**values)
+        return write()
     except IntegrityError as exc:
         if "excl_reservation_overlap" in str(exc):
             raise SpectrumConflictError(
