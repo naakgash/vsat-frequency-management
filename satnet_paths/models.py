@@ -182,7 +182,21 @@ class SatnetPath(TimestampedModel):
         db_table = "satnet_path"
         ordering = ["satnet__code", "code", "-revision_number"]
         default_permissions = ("view",)
-        permissions = [("manage_satnet_paths", "Can create and change Satnet Paths")]
+        #: One per transition, not one per screen. `docs/design/03` §2.2 keeps them separate
+        #: because the roles genuinely differ — an Operator plans and submits, an Approver
+        #: decides and retires — and a single "change lifecycle" capability would hand the
+        #: Operator the approval the Approver role exists to be separate from.
+        permissions = [
+            ("manage_satnet_paths", "Can create and change Satnet Paths"),
+            ("plan_satnetpath", "Can move a Satnet Path from draft to planned"),
+            ("submit_satnetpath", "Can submit a Satnet Path for approval"),
+            ("approve_satnetpath", "Can approve a Satnet Path onto air"),
+            ("reject_satnetpath", "Can reject a Satnet Path back to planned"),
+            ("suspend_satnetpath", "Can suspend and resume an on-air Satnet Path"),
+            ("retire_satnetpath", "Can retire a Satnet Path"),
+            ("cancel_satnetpath", "Can cancel a draft or planned Satnet Path"),
+            ("revise_satnetpath", "Can create a new revision of a Satnet Path"),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["satnet", "code", "revision_number"], name="uq_path_satnet_code_revision"

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Refused &middot; {{ path.code }}{% endblock %}
+{% block content %}
+<h1 class="h3">That is not possible right now</h1>
+<p class="text-body-secondary">
+  {{ path.code }} is <span class="badge text-bg-light border">{{ path.get_status_display }}</span>
+  and nothing was changed.
+</p>
+<div class="alert alert-warning">{{ message }}</div>
+<a class="btn btn-primary" href="{{ path.get_absolute_url }}">Back to the Satnet Path</a>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load rf %}
+{% load utc_tags %}
+{% block title %}Approvals{% endblock %}
+{% block content %}
+<h1 class="h3">Awaiting approval</h1>
+<p class="text-body-secondary">
+  Allocations that have been submitted and not yet decided (§15.2). Every role can read this
+  queue — an Operator needs to see that what they submitted is still waiting — but only an
+  Approver can decide, and not on their own work (§12).
+</p>
+
+{% if paths %}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th scope="col">Satnet Path</th>
+          <th scope="col">Satnet</th>
+          <th scope="col">Direction</th>
+          <th scope="col">Allocated</th>
+          <th scope="col">Valid from</th>
+          <th scope="col">Submitted by</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for path in paths %}
+          <tr>
+            <th scope="row" class="fw-normal">
+              <a href="{{ path.get_absolute_url }}">{{ path.code }}</a>
+              <span class="text-body-secondary">r{{ path.revision_number }}</span>
+            </th>
+            <td><a href="{{ path.satnet.get_absolute_url }}">{{ path.satnet.code }}</a></td>
+            <td>{{ path.direction }}</td>
+            <td class="rf-value">
+              {{ path.canonical_allocated_start_hz|mhz }} – {{ path.canonical_allocated_end_hz|mhz }} MHz
+            </td>
+            <td>{{ path.valid_from|utc }}</td>
+            <td>{{ path.created_by|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="card"><div class="card-body text-body-secondary">
+    Nothing is waiting for a decision.
+  </div></div>
+{% endif %}
+{% endblock %}

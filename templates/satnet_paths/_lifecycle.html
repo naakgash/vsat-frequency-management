@@ -1,0 +1,27 @@
+{% comment %}
+The moves this reader may actually make, and nothing else. §15.2.
+
+`lifecycle.offered_to` has already applied capability and scope, so a button that appears
+works — offering one that returns 403 reads as a fault rather than as a boundary.
+
+`record_version` rides along on every form. That is the whole of §15.5 at the interface: the
+page states which version it was rendered against, and the service refuses a move computed
+against a record somebody else has since changed.
+{% endcomment %}
+{% if transitions %}
+  <div class="d-flex gap-2 flex-wrap">
+    {% for transition in transitions %}
+      <form method="post" action="{% if transition.is_approval %}{% url 'approvals:decide' pk=path.pk outcome=transition.action %}{% else %}{% url 'satnet_paths:transition' pk=path.pk action=transition.action %}{% endif %}">
+        {% csrf_token %}
+        <input type="hidden" name="record_version" value="{{ path.record_version }}">
+        <button class="btn btn-sm {% if transition.action == 'approve' %}btn-primary{% elif transition.action == 'cancel' or transition.action == 'reject' %}btn-outline-danger{% else %}btn-outline-secondary{% endif %}"
+                type="submit">{{ transition.label }}</button>
+      </form>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="small text-body-secondary mb-0">
+    No lifecycle action is available to you here — either this is a final status, or the
+    capability or scope belongs to somebody else.
+  </p>
+{% endif %}

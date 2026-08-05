@@ -62,6 +62,17 @@ VIEW_SATNET_PATH = "satnet_paths.view_satnetpath"
 MANAGE_SATNET_PATHS = "satnet_paths.manage_satnet_paths"
 MANAGE_BEAMS = "beams.manage_beams"
 
+#: The §15.2 lifecycle, one capability per transition (`docs/design/03` §2.2).
+PLAN_SATNET_PATH = "satnet_paths.plan_satnetpath"
+SUBMIT_SATNET_PATH = "satnet_paths.submit_satnetpath"
+APPROVE_SATNET_PATH = "satnet_paths.approve_satnetpath"
+REJECT_SATNET_PATH = "satnet_paths.reject_satnetpath"
+SUSPEND_SATNET_PATH = "satnet_paths.suspend_satnetpath"
+RETIRE_SATNET_PATH = "satnet_paths.retire_satnetpath"
+CANCEL_SATNET_PATH = "satnet_paths.cancel_satnetpath"
+REVISE_SATNET_PATH = "satnet_paths.revise_satnetpath"
+VIEW_APPROVALS = "approvals.view_approvaldecision"
+
 #: Read access to inventory is uniform across the five entities.
 _ALL_ROLES = (Role.ADMIN, Role.OPERATOR, Role.APPROVER, Role.OBSERVER)
 
@@ -106,4 +117,22 @@ CAPABILITY_MATRIX: dict[str, tuple[str, ...]] = {
     # §9: creating allocations is the Operator's job. Object scope narrows it further — the
     # Satnet's Beam and Hub must both be granted (A-17) — and that is checked separately.
     MANAGE_SATNET_PATHS: (Role.ADMIN, Role.OPERATOR),
+    # §15.2's graph, split the way `docs/design/03` §2.2 splits it. The division is the point
+    # of §12's separation of duties: whoever plans a transmission does not put it on air.
+    PLAN_SATNET_PATH: (Role.ADMIN, Role.OPERATOR),
+    SUBMIT_SATNET_PATH: (Role.ADMIN, Role.OPERATOR),
+    REVISE_SATNET_PATH: (Role.ADMIN, Role.OPERATOR),
+    # Deciding, suspending and retiring are the Approver's, **including for Admin**.
+    # `docs/design/03` §2.1 marks these rows "—" for administrators, and the surrounding text
+    # says why: "Admin is powerful but not omnipotent". An administrator who must approve
+    # something is given the Approver role, which is a grant somebody can see, rather than
+    # inheriting the authority invisibly.
+    APPROVE_SATNET_PATH: (Role.APPROVER,),
+    REJECT_SATNET_PATH: (Role.APPROVER,),
+    SUSPEND_SATNET_PATH: (Role.APPROVER,),
+    RETIRE_SATNET_PATH: (Role.APPROVER,),
+    # Cancelling only ever applies to a draft or planned allocation — nothing is on air — so
+    # it stays with the people who work with them day to day.
+    CANCEL_SATNET_PATH: (Role.ADMIN, Role.OPERATOR, Role.APPROVER),
+    VIEW_APPROVALS: _ALL_ROLES,
 }

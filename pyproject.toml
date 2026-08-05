@@ -129,6 +129,7 @@ django_settings_module = "config.settings.test"
 root_packages = [
     "config",
     "operations",
+    "approvals",
     "satnet_paths",
     "satnets",
     "spectrum",
@@ -146,6 +147,7 @@ name = "config is the composition root and nothing imports it"
 type = "forbidden"
 source_modules = [
     "operations",
+    "approvals",
     "satnet_paths",
     "satnets",
     "spectrum",
@@ -167,6 +169,7 @@ source_modules = ["audit"]
 forbidden_modules = [
     "accounts",
     "operations",
+    "approvals",
     "specifications",
     "inventory",
     "beams",
@@ -180,13 +183,21 @@ forbidden_modules = [
 name = "accounts does not import domain modules"
 type = "forbidden"
 source_modules = ["accounts"]
-forbidden_modules = ["operations", "specifications", "inventory", "beams", "calculations"]
+forbidden_modules = [
+    "operations",
+    "approvals",
+    "specifications",
+    "inventory",
+    "beams",
+    "calculations",
+]
 
 [[tool.importlinter.contracts]]
 name = "module layering"
 type = "layers"
 layers = [
     "operations",
+    "approvals",
     "satnet_paths",
     "satnets",
     "spectrum",

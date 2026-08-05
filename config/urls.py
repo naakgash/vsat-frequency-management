@@ -21,6 +21,12 @@ urlpatterns = [
     path("spectrum/", include("spectrum.urls")),
     path("satnets/", include("satnets.urls")),
     path("satnet-paths/", include("satnet_paths.urls")),
+    # Mounted at the root, and after the Satnet Path routes, because the two decision URLs
+    # live inside `/satnet-paths/<uuid>/` (`docs/design/03` §6) while the queue is its own
+    # page. The Satnet Path include cannot match `approve` or `reject` — its transition route
+    # lists the six moves that are not decisions — so the order is documentation, not a
+    # dependency.
+    path("", include("approvals.urls")),
     path("engineering/", include("calculations.urls")),
 ]
 

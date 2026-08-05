@@ -352,10 +352,10 @@ NULL/empty until engineering confirms it.
 | ID | Question | Provisional build position |
 |---|---|---|
 | **OQ-05** | Preferred operator input: Occupied Bandwidth or Symbol Rate | Both modes implemented (§9.2 requires both); a system setting picks the default pre-selection |
-| **OQ-08** | Does `SUSPENDED` retain spectrum? | Controlled setting, default **retain** (§15.3 recommends it) |
+| **OQ-08** | Does `SUSPENDED` retain spectrum? | Controlled setting `SUSPENDED_RETAINS_SPECTRUM`, default **retain** (§15.3 recommends it). Built in S12 and tested both ways; ADR-0017 explains why the column is stored rather than derived. Still a position, not an answer. |
 | **OQ-09** | ~~GW ID definition and uniqueness scope~~ | **ANSWERED 2026-08-05.** A shared reference, not an exclusive resource. It becomes a foreign key to a controlled `Gateway` record, and double-booking is **never** decided from it — the contention boundary is the RF chain, payload input, polarization, frequency range and active period. A GW ID that stands for a finite physical port is modelled as its own `SpectrumResource`. See **A-26** and ADR-0021. |
 | **OQ-10** | ~~Is Decimator an exclusive hardware resource?~~ | **ANSWERED 2026-08-05, and *not* the same as OQ-09.** Yes: a time-bounded allocatable configuration resource. `DecimatorAssignment` records the Decimator, input connection, processed range, bandwidth/decimation parameters, payload-configuration version and active period, and no two active assignments on one Decimator may overlap in time. A Satnet Path references the *assignment*; many Paths may share one. See **A-27** and ADR-0021. |
-| **OQ-11** | Is second-person approval mandatory? | Setting `REQUIRE_SEPARATE_APPROVER`, default **true** |
+| **OQ-11** | Is second-person approval mandatory? | Setting `REQUIRE_SEPARATE_APPROVER`, default **true**, checked against `satnet_path.created_by`. Built in S12 and tested both ways. §12's Approver role is decorative without it, which is why the default is on. |
 | **OQ-12** | Are temporary/hourly future allocations required? | Time model is `timestamptz` and already supports it; UI granularity defaults to date-level |
 | **OQ-13** | Code uniqueness scopes | Per **A-18** |
 | **OQ-15** | Expected user and history volumes | Indexing plan assumes ≤10⁵ Satnet Paths and ≤10⁷ audit rows; partitioning deferred |

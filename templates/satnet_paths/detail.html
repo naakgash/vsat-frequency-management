@@ -14,6 +14,15 @@
   <a href="{{ path.satnet.get_absolute_url }}">{{ path.satnet.code }}</a>
 </p>
 
+<div class="d-flex gap-2 flex-wrap align-items-center mb-4">
+  {% include "satnet_paths/_lifecycle.html" %}
+  {% if editable %}
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'satnet_paths:edit' pk=path.pk %}">Edit</a>
+  {% else %}
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'satnet_paths:revise' pk=path.pk %}">Revise</a>
+  {% endif %}
+</div>
+
 <div class="row g-4">
   <div class="col-12 col-lg-6">
     <div class="card"><div class="card-body">
@@ -64,6 +73,56 @@
         <dt class="col-6">{{ path.translated_leg }}</dt>
         <dd class="col-6 rf-value">{{ path.translated_allocated_start_hz|mhz }} – {{ path.translated_allocated_end_hz|mhz }}</dd>
       </dl>
+    </div></div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">Revision history</h2>
+      <p class="small text-body-secondary">
+        §15.4. An allocation that has been approved or gone on air is never overwritten — it is
+        closed and replaced, and every revision stays readable.
+      </p>
+      <ol class="list-group list-group-numbered list-group-flush small">
+        {% for revision in chain %}
+          <li class="list-group-item d-flex justify-content-between align-items-start px-0">
+            <span>
+              {% if revision.pk == path.pk %}
+                <strong>Revision {{ revision.revision_number }}</strong> (this one)
+              {% else %}
+                <a href="{{ revision.get_absolute_url }}">Revision {{ revision.revision_number }}</a>
+              {% endif %}
+              <span class="text-body-secondary">
+                — {{ revision.valid_from|utc:"Y-m-d" }}
+                {% if revision.valid_until %}to {{ revision.valid_until|utc:"Y-m-d" }}{% else %}open{% endif %}
+              </span>
+            </span>
+            <span class="badge text-bg-light border">{{ revision.get_status_display }}</span>
+          </li>
+        {% endfor %}
+      </ol>
+    </div></div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">Approval decisions</h2>
+      {% if decisions %}
+        <ul class="list-group list-group-flush small">
+          {% for decision in decisions %}
+            <li class="list-group-item px-0">
+              <strong>{{ decision.get_decision_display }}</strong> by {{ decision.decided_by }}
+              &middot; {{ decision.decided_at|utc }}
+              {% if decision.comment %}<div class="text-body-secondary">{{ decision.comment }}</div>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="small text-body-secondary mb-0">
+          No decision has been recorded on this revision. Decisions are append-only (§18): a
+          rejection stays visible after a later approval.
+        </p>
+      {% endif %}
     </div></div>
   </div>
 </div>

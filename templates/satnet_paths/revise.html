@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load utc_tags %}
+{% block title %}Revise {{ path.code }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'satnet_paths:list' %}">Satnet Paths</a></li>
+  <li class="breadcrumb-item"><a href="{{ path.get_absolute_url }}">{{ path.code }}</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Revise</li>
+</ol></nav>
+
+<h1 class="h3">Revise {{ path.code }}</h1>
+<div class="alert alert-info">
+  <p class="mb-1">
+    Revision {{ path.revision_number }} is not overwritten (§15.4). It closes at the moment you
+    give as <strong>valid from</strong> below, goes to <em>Retired</em>, and releases its
+    spectrum; revision {{ path.revision_number|add:1 }} opens from that moment.
+  </p>
+  <p class="mb-0 small">
+    Currently valid from {{ path.valid_from|utc }}
+    {% if path.valid_until %}to {{ path.valid_until|utc }}{% else %}, open-ended{% endif %}.
+    The successor re-enters the lifecycle at Planned, or awaiting approval if this one was
+    approved — approval is not inherited.
+  </p>
+</div>
+
+{% if findings %}{% include "satnet_paths/_findings.html" %}{% endif %}
+
+<form method="post" class="col-12 col-lg-6">
+  {% csrf_token %}
+  <input type="hidden" name="record_version" value="{{ path.record_version }}">
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+  {% for field in form %}
+    <div class="mb-3">
+      <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+      {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+    </div>
+  {% endfor %}
+  <div class="mb-3">
+    <label class="form-label" for="change_reason">Reason</label>
+    <input class="form-control" type="text" name="change_reason" id="change_reason"
+           placeholder="Recorded in the audit trail">
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary" type="submit">Create revision</button>
+    <a class="btn btn-outline-secondary" href="{{ path.get_absolute_url }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

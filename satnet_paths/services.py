@@ -21,6 +21,7 @@ from typing import Any
 from django.db import transaction
 
 from accounts import policy
+from accounts.models import User
 from accounts.types import Actor
 from audit import services as audit_services
 from beams.models import BeamDirectionConfig, BeamSpectrumAssignment
@@ -33,6 +34,7 @@ from satnet_paths.constants import (
     MANAGE_SATNET_PATHS,
     PATH_BLOCKED,
     PATH_CREATED,
+    PATH_UPDATED,
     InputMode,
     PathStatus,
 )
@@ -303,6 +305,209 @@ def create(
     return _create(actor=actor, satnet=satnet, values=values, proposal=proposal, reason=reason)
 
 
+def create_revision(
+    *,
+    actor: Actor,
+    predecessor: SatnetPath,
+    values: dict[str, Any],
+    reason: str = "",
+) -> SatnetPath:
+    """Write the successor half of a revision. §15.4, ADR-0014.
+
+    Called only by ``lifecycle.revise``, which has already closed the predecessor's period and
+    released its spectrum — an ordering this function depends on and cannot check, because a
+    predecessor still holding its own frequency would refuse its own replacement.
+
+    The successor is **recomputed, not copied**. Only the operator's inputs carry forward; the
+    edges, bandwidths and IF are derived again from whatever master data is current, which is
+    the point of revising rather than editing.
+    """
+    proposal = preview(
+        satnet=predecessor.satnet,
+        direction=values["direction"],
+        input_mode=values["input_mode"],
+        input_value=values["input_value"],
+        rolloff=values["rolloff"],
+        centre_hz=values["canonical_center_hz"],
+        valid_from=values["valid_from"],
+        valid_until=values.get("valid_until"),
+        guard_policy=values.get("guard_policy"),
+        exclude_path_id=predecessor.pk,
+    )
+    if proposal.findings:
+        raise PathBlockedError(proposal.findings)
+
+    return _create(
+        actor=actor,
+        satnet=predecessor.satnet,
+        values=values,
+        proposal=proposal,
+        reason=reason,
+        predecessor=predecessor,
+    )
+
+
+@transaction.atomic
+def rewrite(
+    *,
+    actor: Actor,
+    path: SatnetPath,
+    values: dict[str, Any],
+    reason: str = "",
+) -> SatnetPath:
+    """Change an editable allocation in place, recomputing everything derived from it.
+
+    Authorisation and the §15.4 status rule are ``lifecycle.edit``'s; this is the write.
+
+    The old occupancy rows are released **before** the new ones are written, inside the one
+    transaction (**A-14**). Nearly every edit keeps some of its own frequency, so an allocation
+    that did not release first would be refused by the rows it is replacing — the same ordering
+    revision needs, for the same reason.
+    """
+    proposal = preview(
+        satnet=path.satnet,
+        direction=values["direction"],
+        input_mode=values["input_mode"],
+        input_value=values["input_value"],
+        rolloff=values["rolloff"],
+        centre_hz=values["canonical_center_hz"],
+        valid_from=values["valid_from"],
+        valid_until=values.get("valid_until"),
+        guard_policy=values.get("guard_policy"),
+        exclude_path_id=path.pk,
+    )
+    if proposal.findings and path.is_operational:
+        raise PathBlockedError(proposal.findings)
+
+    before = audit_services.snapshot(path)
+    spectrum_services.release(actor=actor, satnet_path_id=str(path.pk), reason=reason)
+
+    canonical, translated = _sides_for(proposal.config, proposal.placement)
+    for field, value in _derived_fields(values, proposal, canonical, translated).items():
+        setattr(path, field, value)
+    path.status = values.get("status", path.status)
+    path.change_reason = reason or path.change_reason
+    path.record_version += 1
+    path.updated_by = _acting_user(actor)
+    path.full_clean(exclude=["created_by", "updated_by", "supersedes"])
+    path.save()
+
+    if path.is_operational:
+        spectrum_services.reserve(
+            actor=actor,
+            occupancies=occupancies_of(path, config=proposal.config),
+            satnet_path_id=str(path.pk),
+            direction=path.direction,
+            status=path.status,
+            valid_from=path.valid_from,
+            valid_until=path.valid_until,
+            reason=reason,
+        )
+
+    audit_services.record(
+        action=PATH_UPDATED,
+        actor=actor,
+        obj=path,
+        before=before,
+        after=audit_services.snapshot(path),
+        change_reason=reason,
+        message=f"Changed Satnet Path {path.code}",
+    )
+    return path
+
+
+def occupancies_of(
+    path: SatnetPath, *, config: BeamDirectionConfig | None = None
+) -> list[spectrum_services.Occupancy]:
+    """This Path's occupancies, rebuilt from what it stored. **A-23**.
+
+    Read back from the record rather than recomputed: the Payload Path behind it is versioned
+    and may have been superseded since the allocation was validated, and recomputing would
+    reserve spectrum nobody asked for. The stored edges *are* the allocation
+    (`docs/design/02` §4.2).
+    """
+    config = config or path.beam.direction_configs.get(direction=path.direction)
+    return [
+        spectrum_services.Occupancy(
+            assignment=assignment,
+            leg=leg,
+            polarization=polarization,
+            occupied=FrequencyRange(occupied_start, occupied_end),
+            allocated=FrequencyRange(allocated_start, allocated_end),
+            resource_ids=tuple(
+                str(link.spectrum_resource_id)
+                for link in config.spectrum_resources.all()
+                if link.spectrum_resource.leg == leg
+            ),
+        )
+        for assignment, leg, polarization, (
+            occupied_start,
+            occupied_end,
+        ), (allocated_start, allocated_end) in (
+            (
+                path.canonical_assignment,
+                path.canonical_leg,
+                path.canonical_polarization,
+                (path.canonical_occupied_start_hz, path.canonical_occupied_end_hz),
+                (path.canonical_allocated_start_hz, path.canonical_allocated_end_hz),
+            ),
+            (
+                path.translated_assignment,
+                path.translated_leg,
+                path.translated_polarization,
+                (path.translated_occupied_start_hz, path.translated_occupied_end_hz),
+                (path.translated_allocated_start_hz, path.translated_allocated_end_hz),
+            ),
+        )
+    ]
+
+
+def _derived_fields(
+    values: dict[str, Any], proposal: Proposal, canonical: _Side, translated: _Side
+) -> dict[str, Any]:
+    """Everything the engine owns, in one place. §26.16.
+
+    Shared by creation, revision and edit so the three cannot drift — a field written on
+    creation but forgotten on edit would leave a record whose stored arithmetic describes an
+    allocation it no longer is.
+    """
+    return {
+        "code": values["code"],
+        "direction": values["direction"],
+        "valid_from": values["valid_from"],
+        "valid_until": values.get("valid_until"),
+        "input_mode": values["input_mode"],
+        "input_value": values["input_value"],
+        "rolloff": values["rolloff"],
+        "guard_policy": values.get("guard_policy"),
+        "guard_left_hz": proposal.guard_widths.left_hz,
+        "guard_right_hz": proposal.guard_widths.right_hz,
+        "symbol_rate_sps": proposal.symbol_rate_sps,
+        "occupied_bw_hz": proposal.occupied_bw_hz,
+        "allocated_bw_hz": canonical.placement.allocated.width_hz,
+        "canonical_leg": canonical.leg,
+        "canonical_window": canonical.window,
+        "canonical_assignment": proposal.canonical_assignment,
+        "canonical_center_hz": values["canonical_center_hz"],
+        "canonical_occupied_start_hz": canonical.placement.occupied.start_hz,
+        "canonical_occupied_end_hz": canonical.placement.occupied.end_hz,
+        "canonical_allocated_start_hz": canonical.placement.allocated.start_hz,
+        "canonical_allocated_end_hz": canonical.placement.allocated.end_hz,
+        "canonical_polarization": canonical.window.polarization,
+        "translated_leg": translated.leg,
+        "translated_window": translated.window,
+        "translated_assignment": proposal.translated_assignment,
+        "translated_center_hz": _centre_of(translated.placement.occupied),
+        "translated_occupied_start_hz": translated.placement.occupied.start_hz,
+        "translated_occupied_end_hz": translated.placement.occupied.end_hz,
+        "translated_allocated_start_hz": translated.placement.allocated.start_hz,
+        "translated_allocated_end_hz": translated.placement.allocated.end_hz,
+        "translated_polarization": translated.window.polarization,
+        "gateway": values.get("gateway"),
+        "decimator_assignment": values.get("decimator_assignment"),
+    }
+
+
 @transaction.atomic
 def _create(
     *,
@@ -311,54 +516,32 @@ def _create(
     values: dict[str, Any],
     proposal: Proposal,
     reason: str,
+    predecessor: SatnetPath | None = None,
 ) -> SatnetPath:
     canonical, translated = _sides_for(proposal.config, proposal.placement)
     status = values.get("status", PathStatus.DRAFT)
 
     path = SatnetPath(
-        code=values["code"],
         satnet=satnet,
-        # Derived, never bound (§26.16). Every field below this line is written from the
-        # engine's result, and the form's field list does not contain any of them.
+        # Derived, never bound (§26.16). `_derived_fields` is everything the engine owns, and
+        # the form's field list contains none of it — the same dictionary is used by an edit
+        # and by a revision, so the three writers cannot drift apart.
         beam=satnet.beam,
-        direction=values["direction"],
         status=status,
-        valid_from=values["valid_from"],
-        valid_until=values.get("valid_until"),
         change_reason=reason,
-        input_mode=values["input_mode"],
-        input_value=values["input_value"],
-        rolloff=values["rolloff"],
-        guard_policy=values.get("guard_policy"),
-        guard_left_hz=proposal.guard_widths.left_hz,
-        guard_right_hz=proposal.guard_widths.right_hz,
-        symbol_rate_sps=proposal.symbol_rate_sps,
-        occupied_bw_hz=proposal.occupied_bw_hz,
-        allocated_bw_hz=canonical.placement.allocated.width_hz,
-        canonical_leg=canonical.leg,
-        canonical_window=canonical.window,
-        canonical_assignment=proposal.canonical_assignment,
-        canonical_center_hz=values["canonical_center_hz"],
-        canonical_occupied_start_hz=canonical.placement.occupied.start_hz,
-        canonical_occupied_end_hz=canonical.placement.occupied.end_hz,
-        canonical_allocated_start_hz=canonical.placement.allocated.start_hz,
-        canonical_allocated_end_hz=canonical.placement.allocated.end_hz,
-        canonical_polarization=canonical.window.polarization,
-        translated_leg=translated.leg,
-        translated_window=translated.window,
-        translated_assignment=proposal.translated_assignment,
-        translated_center_hz=_centre_of(translated.placement.occupied),
-        translated_occupied_start_hz=translated.placement.occupied.start_hz,
-        translated_occupied_end_hz=translated.placement.occupied.end_hz,
-        translated_allocated_start_hz=translated.placement.allocated.start_hz,
-        translated_allocated_end_hz=translated.placement.allocated.end_hz,
-        translated_polarization=translated.window.polarization,
-        # Recorded, never contended on. The Gateway is a shared reference (**A-26**) and the
-        # Decimator's exclusivity lives on its assignment table (**A-27**), so neither reaches
-        # the occupancy rows written below.
-        gateway=values.get("gateway"),
-        decimator_assignment=values.get("decimator_assignment"),
+        **_derived_fields(values, proposal, canonical, translated),
     )
+    if predecessor is not None:
+        # §15.4. The group is constant across the chain so the history view is one indexed
+        # query, and `ck_path_revision` refuses any later revision that supersedes nothing.
+        path.revision_group = predecessor.revision_group
+        path.revision_number = predecessor.revision_number + 1
+        path.supersedes = predecessor
+    # Recorded here rather than left to the audit trail alone, because the second-person
+    # approval rule compares against it (**OQ-11**): an approver who is also the author has to
+    # be identifiable from the record itself, not from a search through events.
+    path.created_by = _acting_user(actor)
+    path.updated_by = path.created_by
     path.full_clean(exclude=["created_by", "updated_by", "supersedes"])
     path.save()
 
@@ -463,6 +646,16 @@ def _guard_spec(guard_policy: Any, satnet: Satnet) -> GuardPolicySpec | None:
 
 def _centre_of(occupied: FrequencyRange) -> int:
     return occupied.start_hz + occupied.width_hz // 2
+
+
+def _acting_user(actor: Actor) -> User | None:
+    """The actor as a stored user, or nothing.
+
+    An `AnonymousUser` never reaches here — ``policy.require`` refuses first — but the column
+    is nullable and the type says so, which keeps the service honest about the one case where
+    a system action has no person behind it (the importer, in S15).
+    """
+    return actor if isinstance(actor, User) else None
 
 
 def _occupancy(

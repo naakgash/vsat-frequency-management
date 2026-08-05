@@ -93,6 +93,7 @@ exist in SQLite, so a green SQLite suite would prove nothing about the behaviour
 | S10a — Validity Containment | [docs/slices/10a-validity-containment.md](docs/slices/10a-validity-containment.md) | Answers OQ-32; the Beam gains a validity period |
 | S11 — Guided Satnet Path creation | [docs/slices/11-satnet-path-wizard.md](docs/slices/11-satnet-path-wizard.md) | §26.9, §26.10, §26.11, §26.13, §26.16 met; §26.12 partial |
 | S11a — Controlled hardware references and UTC | [docs/slices/11a-controlled-hardware-references-and-utc.md](docs/slices/11a-controlled-hardware-references-and-utc.md) | Answers OQ-09, OQ-10, OQ-23; widens the OQ-22 harness; §26.20 held |
+| S12 — Lifecycle, approvals and revisions | [docs/slices/12-lifecycle-approvals-revisions.md](docs/slices/12-lifecycle-approvals-revisions.md) | §26.14 met; §26.17 advanced; OQ-08 and OQ-11 implemented as settings |
 
 Slices are listed in the order they were delivered, which is not always numerical: S0 was
 written once there was a schema to generate intake sheets from, and the lettered slices are
@@ -113,6 +114,7 @@ schema changes that arrived with an answer.
 - [ADR-0007 — PostgreSQL exclusion constraints hold the overlap guarantee](docs/adr/0007-postgresql-exclusion-constraints.md)
 - [ADR-0009 — Free capacity is calculated, never stored](docs/adr/0009-calculated-free-capacity.md)
 - [ADR-0013 — Append-only audit, enforced by the database](docs/adr/0013-append-only-audit.md)
+- [ADR-0014 — An on-air allocation is closed and replaced, never overwritten](docs/adr/0014-on-air-revisions.md)
 - [ADR-0016 — Guard policies resolve through a fixed hierarchy](docs/adr/0016-guard-policy-hierarchy.md)
 - [ADR-0017 — What a suspended reservation holds](docs/adr/0017-suspended-reservation-policy.md)
 - [ADR-0018 — Overlap is judged on a Spectrum Resource](docs/adr/0018-spectrum-resource-reuse-key.md)
