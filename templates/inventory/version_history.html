@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load utc_tags %}
 {% block title %}{{ object.code }} versions &middot; {{ entity_label }}{% endblock %}
 {% block content %}
 <nav aria-label="Breadcrumb"><ol class="breadcrumb">
@@ -32,10 +33,10 @@
           v{{ version.version_number }}
           {% if version.pk == object.pk %}<span class="badge text-bg-secondary">Viewing</span>{% endif %}
         </th>
-        <td>{{ version.effective_from|date:"Y-m-d H:i" }}</td>
+        <td>{{ version.effective_from|utc }}</td>
         <td>
           {% if version.effective_until %}
-            {{ version.effective_until|date:"Y-m-d H:i" }}
+            {{ version.effective_until|utc }}
           {% else %}
             <span class="text-body-secondary">Open-ended</span>
           {% endif %}

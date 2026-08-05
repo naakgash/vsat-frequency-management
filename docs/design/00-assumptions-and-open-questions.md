@@ -142,6 +142,36 @@ effective-dated entities and `docs/design/04` named `ck_beam_effective` from the
 the rule is expressed. Not a database constraint: it spans four tables and a CHECK is per-row,
 which ADR-0020 records as a deliberate and stated gap.
 
+**A-26 — GW ID is a shared reference and never a contention boundary.**
+Answered by **OQ-09**, 2026-08-05. A `SatnetPath` references a controlled `Gateway` record rather
+than carrying free text, so naming, payload-input association and redundancy relationships stay
+consistent. It is a *reference*, not a resource:
+
+> *"Double-booking shall not be determined from GW ID because the actual contention boundary is the
+> underlying RF chain, payload input, polarization, frequency range and active period."*
+
+Many Hubs and many Paths may name the same Gateway, and two allocations that share one do **not**
+conflict on that account — which is **A-21** restated from the other side, and the reason the
+gateway column appears nowhere in the exclusion key. A manufacturer-specific GW ID that stands for a
+finite physical port is a `SpectrumResource`, not a stricter rule on every Gateway.
+*Blast radius:* one foreign key on `satnet_path`. A test asserts that no occupancy row carries a
+gateway, so a later slice cannot quietly promote the reference into a constraint.
+
+**A-27 — A Decimator is allocated through a time-bounded Assignment.**
+Answered by **OQ-10**, 2026-08-05, and it goes the *opposite* way to A-26 although the register had
+treated the two questions as one. A physical `Decimator` is an allocatable configuration resource:
+the same Decimator must not hold two different active configurations over overlapping periods, and
+an exclusion constraint on `(decimator, active_period)` says so. A `DecimatorAssignment` records the
+Decimator, its input connection, the processed frequency range, the bandwidth or decimation
+parameters, the payload-configuration version and the active period.
+
+A Satnet Path references the **assignment**, not the Decimator, and many Paths may share one where
+they consume the same processed output and the payload supports fan-out, broadcast or multicast. The
+thing that is forbidden is two overlapping assignments on one Decimator, which is a constraint on
+the assignment table and not on how many Paths point at a row of it.
+*Blast radius:* two tables, one exclusion constraint, one foreign key on `satnet_path`. Whether a
+Path's validity must sit inside its assignment's active period is **OQ-36** and is not assumed.
+
 **A-07 — The canonical operator-input side is configuration, not code.**
 The operator enters one centre frequency; the other side is derived. Which leg is canonical is stored
 per Beam direction (`canonical_leg`) so it can be changed without a code change. The build default is
@@ -189,6 +219,19 @@ round-trip property test.
 **A-11 — Adjacency is legal; separation is expressed only by guard bands.**
 Because ranges are half-open, `[…, 100)` and `[100, …)` do not overlap and are accepted (§25). Any
 required physical separation must be modelled as a guard, never as an implicit gap.
+
+**A-28 — UTC is authoritative for storage, validation *and* display.**
+Answered by **OQ-23**, 2026-08-05. Every persisted timestamp, validity check, overlap calculation,
+API value and audit record is UTC, and operational screens say so on the face of the value rather
+than leaving the reader to assume it. A local time zone may later be offered as a secondary display,
+but it may not reach validation or storage — which is why the display is a filter over a UTC value
+and not a `timezone.activate()` on the request.
+
+An `effective_from` or `valid_from` that defaults to the present is the **current UTC instant** and
+is not rounded back to midnight; a midnight value means somebody chose a whole day. S11 had already
+made that choice and flagged it as a sharp edge awaiting this answer, so nothing changes — it is now
+the rule rather than a default nobody had confirmed.
+*Blast radius:* `TIME_ZONE`, one display filter, and the operational templates that use it.
 
 ### Lifecycle and enforcement
 
@@ -253,6 +296,25 @@ Case-insensitive throughout. Provisional scopes:
 
 *Blast radius:* unique-index definitions only.
 
+**A-29 — A golden example is external, or it is not evidence.**
+Sharpened by the **OQ-22** answer, 2026-08-05. The worked example that closes §24 must come from a
+currently operational HTS Forward Satnet Path whose frequency plan, Beam assignment, hub LO and IF
+limits can be checked against existing engineering data:
+
+> *"A hypothetical software-defined payload example or data generated from the implementation itself
+> is not sufficient."*
+
+And it must prove more than the bandwidth arithmetic. The file states the Payload Path Window, the
+Beam Spectrum Assignment, the RF/IF conversion rule, the equipment limits, the validity periods, the
+requested allocation and the expected free-capacity result — plus three outcomes that exercise
+**A-21** end to end: an overlapping allocation through another Hub, Beam or redundant ground site on
+the same payload input and polarization is **rejected**; one on an independently implemented
+polarization **may be accepted**; one outside the Beam Spectrum Assignment or its validity period is
+**rejected**.
+*Blast radius:* the harness, not the engine. OQ-22 cannot be closed by building — only by a file
+whose expected values an RF engineer calculated independently and which the engine then matches
+exactly.
+
 ### Terminology
 
 **A-19 — `Carrier` and `Interference Domain` are forbidden strings.**
@@ -282,7 +344,7 @@ NULL/empty until engineering confirms it.
 | **OQ-06** | Default roll-off by platform | `inventory.RolloffOption` + Satnet default | Bandwidth calculation defaults |
 | **OQ-07** | Guard policy by Band, Window and platform | `inventory.GuardPolicy` rows | Allocated-bandwidth calculation |
 | **OQ-14** | Circular and/or linear polarization in use | Which `PolarizationType` members are enabled per Band | Window definition |
-| **OQ-22** | Validated golden FWD and RTN worked examples | `tests/domain/golden/` fixtures | Calculation-engine acceptance |
+| **OQ-22** | Validated golden worked example, **scope tightened 2026-08-05** — a real operational HTS Forward Satnet Path, never a hypothetical one, stating the window, assignment, conversion rule, equipment limits, validity, requested allocation, expected free capacity and the three reuse outcomes of **A-29** | `tests/domain/golden/` fixtures | Calculation-engine acceptance; hard build failure at Phase 9 |
 | **OQ-24** | Fixed reserved spectrum areas | `SpectrumReservation(kind=FIXED_RESERVE)` rows | Free-gap correctness |
 
 ### 3.2 Blocking for design completion — policy and scope
@@ -291,8 +353,8 @@ NULL/empty until engineering confirms it.
 |---|---|---|
 | **OQ-05** | Preferred operator input: Occupied Bandwidth or Symbol Rate | Both modes implemented (§9.2 requires both); a system setting picks the default pre-selection |
 | **OQ-08** | Does `SUSPENDED` retain spectrum? | Controlled setting, default **retain** (§15.3 recommends it) |
-| **OQ-09** | GW ID definition and uniqueness scope | Stored as validated metadata; promoted to `HardwareResource` only if exclusive |
-| **OQ-10** | Is Decimator an exclusive hardware resource? | Same as OQ-09; `HardwareResource`/`HardwareReservation` shipped but unpopulated |
+| **OQ-09** | ~~GW ID definition and uniqueness scope~~ | **ANSWERED 2026-08-05.** A shared reference, not an exclusive resource. It becomes a foreign key to a controlled `Gateway` record, and double-booking is **never** decided from it — the contention boundary is the RF chain, payload input, polarization, frequency range and active period. A GW ID that stands for a finite physical port is modelled as its own `SpectrumResource`. See **A-26** and ADR-0021. |
+| **OQ-10** | ~~Is Decimator an exclusive hardware resource?~~ | **ANSWERED 2026-08-05, and *not* the same as OQ-09.** Yes: a time-bounded allocatable configuration resource. `DecimatorAssignment` records the Decimator, input connection, processed range, bandwidth/decimation parameters, payload-configuration version and active period, and no two active assignments on one Decimator may overlap in time. A Satnet Path references the *assignment*; many Paths may share one. See **A-27** and ADR-0021. |
 | **OQ-11** | Is second-person approval mandatory? | Setting `REQUIRE_SEPARATE_APPROVER`, default **true** |
 | **OQ-12** | Are temporary/hourly future allocations required? | Time model is `timestamptz` and already supports it; UI granularity defaults to date-level |
 | **OQ-13** | Code uniqueness scopes | Per **A-18** |
@@ -303,7 +365,7 @@ NULL/empty until engineering confirms it.
 | **OQ-19** | Official RPO/RTO/retention policy | Spec §22.4 temporary targets used until confirmed |
 | **OQ-20** | Availability of NMS integration APIs | Out of MVP scope; no integration surface built |
 | **OQ-21** | Required service/customer/platform metadata | Satnet carries the fields named in §13.9 only |
-| **OQ-23** | Default display time zone | Storage UTC; display time zone a system setting, unset until confirmed |
+| **OQ-23** | ~~Default display time zone~~ | **ANSWERED 2026-08-05.** UTC is the authoritative operational **and** display time zone. Persisted values, validity checks, overlap calculations, API values and audit records are UTC; operational screens display it explicitly. A local zone may be a secondary display only and may not affect validation or storage. A defaulted `effective_from` is the current UTC instant, never rounded to midnight. See **A-28** and ADR-0022. |
 
 ### 3.3 New — discovered during this design pass
 
@@ -320,6 +382,7 @@ NULL/empty until engineering confirms it.
 | **OQ-33** | Does the platform reserve spectrum for a Satnet Path whose Beam has been deactivated mid-life? | Beam deactivation with live ON_AIR paths is not covered by §5 or §15. | Deactivation blocked while spectrum-reserving paths exist |
 | **OQ-34** | Are minimum edge guards (§13.6) part of the allocated range or a separate validation? | If part of the range, the DB blocks edge placement; if separate, only the service does. | Separate validation against Window edges; the DB enforces containment only |
 | **OQ-35** | When an Equipment Profile or Frequency Window is re-versioned, do live ON_AIR paths migrate to the new version or stay pinned? | **A-16** pins them. Migration semantics change the revision policy in §15.4. | Pinned to the referenced version; a report lists paths on superseded versions |
+| **OQ-36** | Must a Satnet Path's validity sit inside its Decimator Assignment's active period? | Raised by the **OQ-10** answer, which makes the assignment time-bounded but does not say what happens when a Path outlives one. **A-25** already requires containment in three periods; a fourth would be consistent, and asserting it unasked would refuse allocations on a rule nobody confirmed. | The foreign key is recorded and **not** checked for containment. The gap is stated in ADR-0021 rather than closed by assumption. |
 
 ---
 

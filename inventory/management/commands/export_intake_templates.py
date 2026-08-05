@@ -43,10 +43,37 @@ GENERATED_NOTICE = (
 #: The shape ``tests/domain/test_golden_examples.py`` reads. Every value is empty: §26.20
 #: forbids shipping a plausible worked example, and a template with numbers in it is one
 #: copy-and-paste away from becoming a fixture nobody can trace.
+#:
+#: Widened by the **OQ-22** answer (**A-29**), which asks the example to state considerably
+#: more than the bandwidth arithmetic: the Payload Path Window, the Beam Spectrum Assignment,
+#: the RF/IF conversion rule, the equipment limits, the validity periods, the requested
+#: allocation, the expected free capacity — and three outcomes that exercise the reuse model
+#: end to end. The empty ``scenarios`` entry is a shape, not an example: a file that leaves it
+#: as it ships fails the completeness check rather than closing the question quietly.
 GOLDEN_EXAMPLE_TEMPLATE: dict[str, Any] = {
     "name": "",
     "source": "",
     "direction": "",
+    "payload_path_window": {
+        "uplink": [None, None],
+        "uplink_polarization": "",
+        "downlink": [None, None],
+        "downlink_polarization": "",
+    },
+    "beam_spectrum_assignment": {
+        "uplink": [None, None],
+        "downlink": [None, None],
+        "effective_from": "",
+        "effective_until": None,
+    },
+    "equipment": {
+        "conversion_method": "",
+        "sideband": "",
+        "lo_hz": None,
+        "if_min_hz": None,
+        "if_max_hz": None,
+    },
+    "validity": {"valid_from": "", "valid_until": None},
     "symbol_rate_sps": None,
     "occupied_bandwidth_hz": None,
     "rolloff": "",
@@ -59,12 +86,32 @@ GOLDEN_EXAMPLE_TEMPLATE: dict[str, Any] = {
         "percent_right": None,
     },
     "translation": {"method": "", "constant_hz": None, "spectral_inversion": False},
+    #: Only needed by an ACCEPT_INDEPENDENT_POLARIZATION scenario: the windows of the
+    #: orthogonal polarization whose RF chains the site implements separately (**A-21**).
+    "independent_polarization": {
+        "polarization": "",
+        "uplink": [None, None],
+        "downlink": [None, None],
+    },
     "expect": {
         "occupied_bandwidth_hz": None,
         "uplink_occupied": [None, None],
         "uplink_allocated": [None, None],
         "downlink_occupied": [None, None],
         "downlink_allocated": [None, None],
+        "if_occupied": [None, None],
+        "free_capacity": {"leg": "", "gaps": [], "total_free_hz": None},
+        "scenarios": [
+            {
+                "name": "",
+                "kind": "",
+                "uplink_centre_hz": None,
+                "valid_from": None,
+                "valid_until": None,
+                "expect": "",
+                "expect_finding": "",
+            }
+        ],
     },
 }
 

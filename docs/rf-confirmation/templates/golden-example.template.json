@@ -2,6 +2,41 @@
   "name": "",
   "source": "",
   "direction": "",
+  "payload_path_window": {
+    "uplink": [
+      null,
+      null
+    ],
+    "uplink_polarization": "",
+    "downlink": [
+      null,
+      null
+    ],
+    "downlink_polarization": ""
+  },
+  "beam_spectrum_assignment": {
+    "uplink": [
+      null,
+      null
+    ],
+    "downlink": [
+      null,
+      null
+    ],
+    "effective_from": "",
+    "effective_until": null
+  },
+  "equipment": {
+    "conversion_method": "",
+    "sideband": "",
+    "lo_hz": null,
+    "if_min_hz": null,
+    "if_max_hz": null
+  },
+  "validity": {
+    "valid_from": "",
+    "valid_until": null
+  },
   "symbol_rate_sps": null,
   "occupied_bandwidth_hz": null,
   "rolloff": "",
@@ -17,6 +52,17 @@
     "method": "",
     "constant_hz": null,
     "spectral_inversion": false
+  },
+  "independent_polarization": {
+    "polarization": "",
+    "uplink": [
+      null,
+      null
+    ],
+    "downlink": [
+      null,
+      null
+    ]
   },
   "expect": {
     "occupied_bandwidth_hz": null,
@@ -35,6 +81,26 @@
     "downlink_allocated": [
       null,
       null
+    ],
+    "if_occupied": [
+      null,
+      null
+    ],
+    "free_capacity": {
+      "leg": "",
+      "gaps": [],
+      "total_free_hz": null
+    },
+    "scenarios": [
+      {
+        "name": "",
+        "kind": "",
+        "uplink_centre_hz": null,
+        "valid_from": null,
+        "valid_until": null,
+        "expect": "",
+        "expect_finding": ""
+      }
     ]
   }
 }

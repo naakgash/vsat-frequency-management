@@ -25,6 +25,8 @@ from inventory.constants import (
 from inventory.models import (
     Band,
     BandPolarization,
+    Decimator,
+    DecimatorAssignment,
     EquipmentProfile,
     FrequencyWindow,
     Gateway,
@@ -121,6 +123,45 @@ def make_frequency_window(
         effective_from=extra.pop("effective_from", timezone.now()),
         **extra,
     )
+
+
+def make_decimator(hub: Hub | None = None, code: str = "DEC-1", **extra: Any) -> Decimator:
+    return Decimator.objects.create(
+        code=code,
+        name=extra.pop("name", f"Decimator {code}"),
+        hub=hub or make_hub(make_gateway(f"GW-{code}"), f"HUB-{code}"),
+        **extra,
+    )
+
+
+def make_decimator_assignment(
+    decimator: Decimator | None = None, **extra: Any
+) -> DecimatorAssignment:
+    """One configuration of one Decimator, over a period. **OQ-10**, A-27.
+
+    The frequencies and the decimation factor are arbitrary and exist only to satisfy
+    constraints — which configurations are real is site data and is not seeded anywhere.
+    """
+    return DecimatorAssignment.objects.create(
+        decimator=decimator or make_decimator(),
+        input_connection=extra.pop("input_connection", "IN-1"),
+        processed_start_hz=extra.pop("processed_start_hz", 950_000_000),
+        processed_end_hz=extra.pop("processed_end_hz", 1_450_000_000),
+        payload_path=extra.pop("payload_path", None) or _decimator_payload_path(),
+        effective_from=extra.pop("effective_from", timezone.now()),
+        **extra,
+    )
+
+
+def _decimator_payload_path() -> PayloadPath:
+    """One shared payload path for decimator fixtures, created on first use.
+
+    Reused rather than rebuilt because ``make_payload_path`` also builds a satellite, a band
+    and two windows: a test creating two assignments would otherwise collide on the satellite's
+    code, and fail for a reason that has nothing to do with decimators.
+    """
+    existing = PayloadPath.objects.filter(code="PP-DEC").first()
+    return existing or make_payload_path(make_satellite("SAT-DEC"), code="PP-DEC")
 
 
 def make_payload_path(

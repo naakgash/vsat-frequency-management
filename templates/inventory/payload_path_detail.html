@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load rf %}
+{% load utc_tags %}
 {% block title %}{{ object.code }} v{{ object.version_number }} &middot; Payload Paths{% endblock %}
 {% block content %}
 {% include "inventory/_detail_header.html" %}
@@ -7,7 +8,7 @@
 {% if is_superseded %}
   <div class="alert alert-warning" role="alert">
     This is version {{ object.version_number }}, superseded on
-    {{ object.effective_until|date:"Y-m-d H:i" }}.
+    {{ object.effective_until|utc }}.
     {% if current_version %}
       The version in force is
       <a href="{{ current_version.get_absolute_url }}" class="alert-link">version {{ current_version.version_number }}</a>.

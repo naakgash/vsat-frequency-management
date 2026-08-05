@@ -1,3 +1,4 @@
+{% load utc_tags %}
 {% load rf %}
 {# What this direction competes on, and what it may use. ADR-0018, ADR-0019. #}
 <div class="row g-3 mt-1">
@@ -47,8 +48,8 @@
               <span class="badge text-bg-info-subtle border">Sub-range</span>
             {% endif %}
             <span class="d-block text-body-secondary">
-              {{ assignment.effective_from|date:"Y-m-d" }} –
-              {% if assignment.effective_until %}{{ assignment.effective_until|date:"Y-m-d" }}{% else %}open{% endif %}
+              {{ assignment.effective_from|utc:"Y-m-d" }} –
+              {% if assignment.effective_until %}{{ assignment.effective_until|utc:"Y-m-d" }}{% else %}open{% endif %}
             </span>
           </li>
         {% endfor %}

@@ -17,8 +17,13 @@ from __future__ import annotations
 import uuid
 
 from django.contrib.postgres.constraints import ExclusionConstraint
-from django.contrib.postgres.fields import DateTimeRangeField, RangeOperators
+from django.contrib.postgres.fields import (
+    BigIntegerRangeField,
+    DateTimeRangeField,
+    RangeOperators,
+)
 from django.db import models
+from django.db.models import F, Func, Value
 
 from inventory.constants import (
     Direction,
@@ -497,8 +502,166 @@ class SpectrumResource(InventoryRecord, EffectiveDatedModel):
         return bool(self.polarization)
 
 
+class Decimator(InventoryRecord):
+    """A physical decimator at a Hub. **OQ-10**, ADR-0021.
+
+    Ground equipment, not spectrum: the row identifies the box. What it is *doing* over a
+    period is a :class:`DecimatorAssignment`, and that separation is the whole of the OQ-10
+    answer — the Decimator is the thing that can only be in one configuration at a time, so
+    it is what the exclusion constraint keys on.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=50)
+    name = models.CharField(max_length=200)
+
+    hub = models.ForeignKey("inventory.Hub", on_delete=models.PROTECT, related_name="decimators")
+
+    description = models.TextField(blank=True)
+    technical_notes = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "decimator"
+        ordering = ["hub__code", "code"]
+        default_permissions = ("view",)
+        constraints = [
+            models.UniqueConstraint(fields=["hub", "code"], name="uq_decimator_hub_code"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.code} — {self.name}"
+
+
+class DecimatorAssignment(InventoryRecord, EffectiveDatedModel):
+    """What one Decimator is configured to do, over one period. **OQ-10**, ADR-0021.
+
+    RF engineering's answer makes this the allocatable unit:
+
+        *"A physical Decimator shall be modelled as a time-bounded allocatable configuration
+        resource. The same Decimator must not have two different active configurations during
+        overlapping periods."*
+
+    ``excl_decimator_assignment_overlap`` is that sentence. Note what it does **not** say:
+    nothing here restricts how many Satnet Paths reference one assignment. Several may, *"where
+    they intentionally consume the same processed output and the payload supports fan-out,
+    broadcast or multicast"* — so the Path carries a plain foreign key and the exclusivity lives
+    entirely on this table (**A-27**).
+
+    Contrast with :class:`~inventory.models.Gateway`, which the same round of answers went the
+    other way on: a GW ID is a shared reference and never a contention boundary (**A-26**).
+    Two questions the register had recorded as one turned out to have opposite answers.
+
+    **The table ships empty.** Which decimators exist and how they are configured is site data,
+    and a plausible row would be indistinguishable from a confirmed one (§26.20).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    decimator = models.ForeignKey(Decimator, on_delete=models.PROTECT, related_name="assignments")
+
+    input_connection = models.CharField(
+        max_length=100,
+        help_text="The input this configuration processes, as named in the hub's own plan.",
+    )
+    processed_start_hz = models.BigIntegerField()
+    processed_end_hz = models.BigIntegerField(
+        help_text="Exclusive upper edge: the range is [start, end)."
+    )
+    processed_rf = models.GeneratedField(
+        expression=Func(
+            F("processed_start_hz"),
+            F("processed_end_hz"),
+            Value("[)"),
+            function="int8range",
+            output_field=BigIntegerRangeField(),
+        ),
+        output_field=BigIntegerRangeField(),
+        db_persist=True,
+    )
+
+    # "bandwidth or decimation parameters" — both nullable, and deliberately no CHECK demanding
+    # one of them. Which parameterisation a platform states is a fact about the equipment, and
+    # refusing a row that carries neither would be a rule nobody confirmed. Nothing computes
+    # from these columns, so there is no silent-zero failure mode to guard against.
+    channel_bandwidth_hz = models.BigIntegerField(null=True, blank=True)
+    decimation_factor = models.PositiveIntegerField(null=True, blank=True)
+
+    #: The payload configuration this assignment was drawn against. A Payload Path version *is*
+    #: the versioned record of one (**A-16**), so this is the same pin ``BeamSpectrumAssignment``
+    #: uses rather than a second way of naming the same thing.
+    payload_path = models.ForeignKey(
+        "inventory.PayloadPath", on_delete=models.PROTECT, related_name="decimator_assignments"
+    )
+
+    active_period = models.GeneratedField(
+        expression=Func(
+            F("effective_from"),
+            F("effective_until"),
+            Value("[)"),
+            function="tstzrange",
+            output_field=DateTimeRangeField(),
+        ),
+        output_field=DateTimeRangeField(),
+        db_persist=True,
+    )
+
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "decimator_assignment"
+        ordering = ["decimator__code", "-effective_from"]
+        default_permissions = ("view",)
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(processed_start_hz__lt=models.F("processed_end_hz")),
+                name="ck_decimator_assignment_range",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(effective_until__isnull=True)
+                | models.Q(effective_until__gt=models.F("effective_from")),
+                name="ck_decimator_assignment_period",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(channel_bandwidth_hz__isnull=True)
+                | models.Q(channel_bandwidth_hz__gt=0),
+                name="ck_decimator_assignment_bandwidth",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(decimation_factor__isnull=True)
+                | models.Q(decimation_factor__gt=0),
+                name="ck_decimator_assignment_factor",
+            ),
+            # The OQ-10 answer, as a constraint. Conditional on ``is_active`` for the same
+            # reason the window-version constraint is: a retired configuration is history, and
+            # history is allowed to overlap the present.
+            ExclusionConstraint(
+                name="excl_decimator_assignment_overlap",
+                expressions=[
+                    ("decimator", RangeOperators.EQUAL),
+                    ("active_period", RangeOperators.OVERLAPS),
+                ],
+                condition=models.Q(is_active=True),
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["decimator", "effective_from"],
+                name="decimator_assignment_idx",
+                condition=models.Q(is_active=True),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.decimator.code} @ {self.input_connection}"
+
+    @property
+    def width_hz(self) -> int:
+        return self.processed_end_hz - self.processed_start_hz
+
+
 __all__ = [
     "DateTimeRangeField",
+    "Decimator",
+    "DecimatorAssignment",
     "FrequencyWindow",
     "GuardPolicy",
     "PayloadPath",

@@ -203,14 +203,21 @@ ALTER TABLE frequency_window
 
 Repeated identically on `payload_path` and `equipment_profile`.
 
-### 3.4 Hardware exclusivity (dormant until OQ-09 / OQ-10)
+### 3.4 Decimator exclusivity (**OQ-10**, ADR-0021)
+
+The dormant sketch this section used to hold assumed one generic `hardware_reservation` table
+covering both **OQ-09** and **OQ-10**. The answers separated them: a GW ID is a shared reference
+and gets no constraint at all (**A-26**), while a Decimator holds one configuration at a time.
 
 ```sql
-ALTER TABLE hardware_reservation
-  ADD CONSTRAINT excl_hardware_overlap
-  EXCLUDE USING gist (resource_id WITH =, active_period WITH &&)
-  WHERE (is_exclusive);
+ALTER TABLE decimator_assignment
+  ADD CONSTRAINT excl_decimator_assignment_overlap
+  EXCLUDE USING gist (decimator_id WITH =, active_period WITH &&)
+  WHERE (is_active);
 ```
+
+Note what is *not* constrained: how many Satnet Paths reference one assignment. Several may, so
+the Path carries a plain foreign key and the exclusivity stays on this table.
 
 ---
 
