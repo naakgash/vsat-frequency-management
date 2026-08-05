@@ -86,6 +86,17 @@ exist in SQLite, so a green SQLite suite would prove nothing about the behaviour
 | S6 — Calculation Engine | [docs/slices/06-calculation-engine.md](docs/slices/06-calculation-engine.md) | §26.10 partial; §26.16 met for bandwidth, edges and guards |
 | S7 — Translation, IF and Equipment | [docs/slices/07-translation-conversion-matching.md](docs/slices/07-translation-conversion-matching.md) | §26.10, §26.12 met for the calculation half; §26.20 gated on OQ-22 |
 | S8 — Beam and Beam Builder | [docs/slices/08-beam-builder.md](docs/slices/08-beam-builder.md) | §26.6, §26.7 met; §26.20 enforced by test |
+| S0 — RF Confirmation Package | [docs/slices/00-rf-confirmation-package.md](docs/slices/00-rf-confirmation-package.md) | §26.20 given a way to be answered; sheets generated from the models |
+| S9a — Spectrum Resources and Assignments | [docs/slices/09a-spectrum-resources-and-assignments.md](docs/slices/09a-spectrum-resources-and-assignments.md) | Answers OQ-25, OQ-26, OQ-27; supersedes **A-01** |
+| S9 — Reservations and Gaps | [docs/slices/09-reservations-and-gaps.md](docs/slices/09-reservations-and-gaps.md) | §26.8, §26.11 met; the exclusion constraint lands |
+| S10 — Satnets | [docs/slices/10-satnets.md](docs/slices/10-satnets.md) | §26.14 met; conjunctive scope (**A-17**) reaches an operational record |
+| S10a — Validity Containment | [docs/slices/10a-validity-containment.md](docs/slices/10a-validity-containment.md) | Answers OQ-32; the Beam gains a validity period |
+| S11 — Guided Satnet Path creation | [docs/slices/11-satnet-path-wizard.md](docs/slices/11-satnet-path-wizard.md) | §26.9, §26.10, §26.11, §26.13, §26.16 met; §26.12 partial |
+| S11a — Controlled hardware references and UTC | [docs/slices/11a-controlled-hardware-references-and-utc.md](docs/slices/11a-controlled-hardware-references-and-utc.md) | Answers OQ-09, OQ-10, OQ-23; widens the OQ-22 harness; §26.20 held |
+
+Slices are listed in the order they were delivered, which is not always numerical: S0 was
+written once there was a schema to generate intake sheets from, and the lettered slices are
+schema changes that arrived with an answer.
 
 ## Architecture decisions
 
@@ -98,22 +109,34 @@ exist in SQLite, so a green SQLite suite would prove nothing about the behaviour
 - [ADR-0010 — One calculation engine, and it is pure](docs/adr/0010-central-calculation-engine.md)
 - [ADR-0011 — Specification Dictionary as the single source of field wording](docs/adr/0011-specification-dictionary.md)
 - [ADR-0012 — Master data is superseded, not overwritten](docs/adr/0012-master-data-versioning.md)
-- [ADR-0016 — Guard policies resolve through a fixed hierarchy](docs/adr/0016-guard-policy-hierarchy.md)
+- [ADR-0005 — Satnet Path terminology](docs/adr/0005-satnet-path-terminology.md)
+- [ADR-0007 — PostgreSQL exclusion constraints hold the overlap guarantee](docs/adr/0007-postgresql-exclusion-constraints.md)
+- [ADR-0009 — Free capacity is calculated, never stored](docs/adr/0009-calculated-free-capacity.md)
 - [ADR-0013 — Append-only audit, enforced by the database](docs/adr/0013-append-only-audit.md)
+- [ADR-0016 — Guard policies resolve through a fixed hierarchy](docs/adr/0016-guard-policy-hierarchy.md)
+- [ADR-0017 — What a suspended reservation holds](docs/adr/0017-suspended-reservation-policy.md)
+- [ADR-0018 — Overlap is judged on a Spectrum Resource](docs/adr/0018-spectrum-resource-reuse-key.md)
+- [ADR-0019 — A Beam's usable spectrum is its assignments](docs/adr/0019-beam-spectrum-assignments.md)
+- [ADR-0020 — A Satnet Path lives inside the intersection of three periods](docs/adr/0020-validity-containment.md)
+- [ADR-0021 — A GW ID is a reference; a Decimator is allocated through an Assignment](docs/adr/0021-hardware-references-and-decimator-assignments.md)
+- [ADR-0022 — UTC is the display time zone, and it is displayed](docs/adr/0022-utc-is-the-display-time-zone.md)
 
-## Before implementation starts
+## What is still open
 
-Three questions can change the database schema and **must** be answered before slice **S9**
-(reservations and exclusion constraints). S8 was the last slice that could proceed without them:
+The three questions that could change the database schema — **OQ-25**, **OQ-26** and **OQ-27** —
+were answered on 2026-08-04 and are implemented (S9a, S10a). **OQ-09**, **OQ-10**, **OQ-23** and
+**OQ-32** followed. The full register, with what each answer changed, is in
+[docs/design/00](docs/design/00-assumptions-and-open-questions.md).
 
-- **OQ-25** — is frequency reuse permitted between two Beams sharing the same Gateway/Hub uplink
-  Frequency Window?
-- **OQ-26** — is remote-terminal equipment (remote BUC/LNB) and its L-band IF in scope?
-- **OQ-27** — may a Beam use a sub-range of its Payload Path's Frequency Window?
+**OQ-22 is the one gap that cannot be closed by building.** Section 24 asks for a worked example
+from a currently operational Satnet Path, calculated independently by an RF engineer — anything
+the implementation produces proves nothing about the implementation. `tests/domain/golden/` is
+empty, and the build fails at Phase 9 while it stays that way.
 
 The remaining RF engineering values (Frequency Windows, translations, polarization mappings,
-equipment limits, guard policies, golden examples) are required before production activation, not
-before implementation: each is a row in a table, not a branch in the code. No value is invented.
+equipment limits, guard policies, decimator configurations) are required before production
+activation, not before implementation: each is a row in a table, not a branch in the code. No
+value is invented. `docs/rf-confirmation/` is how they are asked for.
 
 ## Planned stack
 

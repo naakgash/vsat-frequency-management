@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load utc_tags %}
 {% block title %}Spectrum Resources &middot; Inventory{% endblock %}
 {% block content %}
 {% include "inventory/_list_header.html" with title="Spectrum Resources" add_label="Spectrum Resource" blurb="What competes with what. Two allocations conflict when they occupy the same resource with overlapping RF and overlapping time — nothing else about them matters." %}
@@ -27,8 +28,8 @@
         </td>
         <td class="text-end">{{ object.beam_directions.count }}</td>
         <td class="small text-body-secondary">
-          {{ object.effective_from|date:"Y-m-d" }} –
-          {% if object.effective_until %}{{ object.effective_until|date:"Y-m-d" }}{% else %}open{% endif %}
+          {{ object.effective_from|utc:"Y-m-d" }} –
+          {% if object.effective_until %}{{ object.effective_until|utc:"Y-m-d" }}{% else %}open{% endif %}
         </td>
         <td>{% include "inventory/_status_badge.html" %}</td>
       </tr>

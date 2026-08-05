@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load rf %}
+{% load utc_tags %}
 {% block title %}{{ satnet.code }} &middot; Satnets{% endblock %}
 {% block content %}
 <nav aria-label="breadcrumb"><ol class="breadcrumb">
@@ -56,8 +57,8 @@
         <dt class="col-sm-5">Platform</dt><dd class="col-sm-7">{{ satnet.platform|default:"—" }}</dd>
         <dt class="col-sm-5">In force</dt>
         <dd class="col-sm-7">
-          {{ satnet.effective_from|date:"Y-m-d" }} –
-          {% if satnet.effective_until %}{{ satnet.effective_until|date:"Y-m-d" }}{% else %}open{% endif %}
+          {{ satnet.effective_from|utc:"Y-m-d" }} –
+          {% if satnet.effective_until %}{{ satnet.effective_until|utc:"Y-m-d" }}{% else %}open{% endif %}
         </dd>
       </dl>
     </div></div>

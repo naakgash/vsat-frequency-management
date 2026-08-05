@@ -150,11 +150,33 @@ class SatnetPath(TimestampedModel):
     if_end_hz = models.BigIntegerField(null=True, blank=True)
 
     # --- Hardware (OQ-09, OQ-10) -------------------------------------------
-    #: Validated free text until **OQ-09** and **OQ-10** say whether these are exclusive
-    #: resources. Modelling them as a `HardwareResource` now would invent an exclusivity rule
-    #: nobody has confirmed, and the platform would start refusing allocations on it.
-    gw_id = models.CharField(max_length=100, blank=True)
-    decimator = models.CharField(max_length=100, blank=True)
+    #: **A-26.** A controlled reference, never a contention boundary. The OQ-09 answer is
+    #: explicit that *"double-booking shall not be determined from GW ID"* — many Hubs and many
+    #: Paths may name the same Gateway, and two allocations that share one do not conflict on
+    #: that account. It appears in no occupancy row and in no exclusion key, and a test asserts
+    #: that it never will.
+    gateway = models.ForeignKey(
+        "inventory.Gateway",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="satnet_paths",
+        verbose_name="GW ID",
+        help_text="The Gateway this Path runs through. A shared reference, not a reservation.",
+    )
+    #: **A-27**, and the opposite answer to the field above it. A Decimator *is* allocatable, so
+    #: the Path points at the time-bounded `DecimatorAssignment` rather than at the box or at a
+    #: free-text name. Many Paths may share one assignment (fan-out, broadcast, multicast); what
+    #: is forbidden is two overlapping assignments on one Decimator, which is enforced on the
+    #: assignment table where it belongs.
+    decimator_assignment = models.ForeignKey(
+        "inventory.DecimatorAssignment",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="satnet_paths",
+        help_text="The Decimator configuration this Path consumes. Several Paths may share one.",
+    )
 
     class Meta:
         db_table = "satnet_path"

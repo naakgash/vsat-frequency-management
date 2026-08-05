@@ -1,3 +1,4 @@
+{% load utc_tags %}
 {% load rf %}
 {# The section 9.5 blocking message: rule, Beam, Window, proposed range, the conflicting
    allocation, the overlap, the validity overlap, and somewhere else to go. #}
@@ -32,8 +33,8 @@
               <td class="text-end rf-value">{{ conflict.conflicting_range.0|mhz }} – {{ conflict.conflicting_range.1|mhz }}</td>
               <td class="text-end rf-value">{{ conflict.overlap_hz|mhz }} MHz</td>
               <td class="small">
-                {{ conflict.validity_overlap.0|date:"Y-m-d" }} –
-                {% if conflict.validity_overlap.1 %}{{ conflict.validity_overlap.1|date:"Y-m-d" }}{% else %}open{% endif %}
+                {{ conflict.validity_overlap.0|utc:"Y-m-d" }} –
+                {% if conflict.validity_overlap.1 %}{{ conflict.validity_overlap.1|utc:"Y-m-d" }}{% else %}open{% endif %}
               </td>
             </tr>
           {% endfor %}

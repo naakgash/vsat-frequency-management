@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load utc_tags %}
 {% block title %}{{ object.code }} &middot; Spectrum Resources{% endblock %}
 {% block content %}
 {% include "inventory/_detail_header.html" %}
@@ -29,9 +30,9 @@
         </dd>
         <dt class="col-sm-4">In force</dt>
         <dd class="col-sm-8">
-          {{ object.effective_from|date:"Y-m-d H:i" }} –
+          {{ object.effective_from|utc }} –
           {% if object.effective_until %}
-            {{ object.effective_until|date:"Y-m-d H:i" }}
+            {{ object.effective_until|utc }}
           {% else %}
             open-ended
           {% endif %}

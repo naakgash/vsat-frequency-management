@@ -1,3 +1,4 @@
+{% load utc_tags %}
 {% comment %}
 Version state for a master-data record. Specification section 13.6.
 
@@ -23,11 +24,11 @@ loudly and links to the one that replaced it.
 
     <dl class="row small mb-2">
       <dt class="col-5">Effective from</dt>
-      <dd class="col-7">{{ object.effective_from|date:"Y-m-d H:i" }}</dd>
+      <dd class="col-7">{{ object.effective_from|utc }}</dd>
       <dt class="col-5">Effective until</dt>
       <dd class="col-7">
         {% if object.effective_until %}
-          {{ object.effective_until|date:"Y-m-d H:i" }}
+          {{ object.effective_until|utc }}
         {% else %}
           <span class="text-body-secondary">Open-ended</span>
         {% endif %}

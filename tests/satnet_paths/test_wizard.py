@@ -59,8 +59,8 @@ def _post(centre=50 * MHZ, **extra):
         "rolloff": "0.2",
         "canonical_center_hz": centre,
         "valid_from": timezone.now().strftime("%Y-%m-%dT%H:%M"),
-        "gw_id": "",
-        "decimator": "",
+        "gateway": "",
+        "decimator_assignment": "",
     }
     data.update(extra)
     return data

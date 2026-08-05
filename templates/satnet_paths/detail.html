@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load rf %}
+{% load utc_tags %}
 {% block title %}{{ path.code }} &middot; Satnet Paths{% endblock %}
 {% block content %}
 <nav aria-label="breadcrumb"><ol class="breadcrumb">
@@ -25,10 +26,25 @@
         <dd class="col-6 rf-value">{{ path.guard_left_hz|mhz }} / {{ path.guard_right_hz|mhz }} MHz</dd>
         <dt class="col-6">Valid</dt>
         <dd class="col-6">
-          {{ path.valid_from|date:"Y-m-d" }} –
-          {% if path.valid_until %}{{ path.valid_until|date:"Y-m-d" }}{% else %}open{% endif %}
+          {{ path.valid_from|utc }} –
+          {% if path.valid_until %}{{ path.valid_until|utc }}{% else %}open{% endif %}
+        </dd>
+        <dt class="col-6">GW ID</dt>
+        <dd class="col-6">
+          {% if path.gateway %}<a href="{{ path.gateway.get_absolute_url }}">{{ path.gateway.code }}</a>{% else %}—{% endif %}
+        </dd>
+        <dt class="col-6">Decimator</dt>
+        <dd class="col-6">
+          {% if path.decimator_assignment %}
+            {{ path.decimator_assignment.decimator.code }} &middot;
+            {{ path.decimator_assignment.input_connection }}
+          {% else %}—{% endif %}
         </dd>
       </dl>
+      <p class="small text-body-secondary mt-2 mb-0">
+        The Gateway is a shared reference and never decides double-booking (A-26). The
+        Decimator's exclusivity is on its configuration, not on this Path (A-27).
+      </p>
     </div></div>
   </div>
 

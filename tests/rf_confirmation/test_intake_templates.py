@@ -155,6 +155,28 @@ def test_the_golden_example_template_ships_empty():
     assert template["expect"]["uplink_occupied"] == [None, None]
 
 
+def test_the_golden_example_template_asks_for_what_the_answer_requires():
+    """**A-29**. The template is the only place an engineer sees what is being asked for.
+
+    OQ-22's answer widened the request considerably — window, assignment, conversion rule,
+    equipment limits, validity, free capacity and three reuse outcomes — and a template still
+    asking only for bandwidths would produce an example that passes every arithmetic test and
+    closes nothing. The completeness check on a *submitted* file lives in
+    ``tests/domain/test_golden_examples.py``; this is its counterpart on the blank form.
+    """
+    from tests.domain import test_golden_examples as harness
+
+    template = json.loads((PACKAGE_ROOT / "templates" / exporter.GOLDEN_FILE.name).read_text())
+
+    missing = [section for section in harness.REQUIRED_SECTIONS if section not in template]
+    assert not missing, f"The golden-example template does not ask for {missing}."
+    assert "free_capacity" in template["expect"]
+    assert template["expect"]["scenarios"], (
+        "The template carries no scenario shape, so nobody filling it in would know the three "
+        "reuse outcomes are part of what closes OQ-22."
+    )
+
+
 def test_the_golden_example_template_has_the_keys_the_harness_reads():
     """The same drift risk as the CSVs, in a file no model can generate.
 

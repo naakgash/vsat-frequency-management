@@ -353,8 +353,11 @@ def _create(
         translated_allocated_start_hz=translated.placement.allocated.start_hz,
         translated_allocated_end_hz=translated.placement.allocated.end_hz,
         translated_polarization=translated.window.polarization,
-        gw_id=values.get("gw_id", ""),
-        decimator=values.get("decimator", ""),
+        # Recorded, never contended on. The Gateway is a shared reference (**A-26**) and the
+        # Decimator's exclusivity lives on its assignment table (**A-27**), so neither reaches
+        # the occupancy rows written below.
+        gateway=values.get("gateway"),
+        decimator_assignment=values.get("decimator_assignment"),
     )
     path.full_clean(exclude=["created_by", "updated_by", "supersedes"])
     path.save()

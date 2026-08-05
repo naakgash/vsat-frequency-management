@@ -16,6 +16,8 @@ from inventory.models.base import (
     TimestampedModel,
 )
 from inventory.models.dependent import (
+    Decimator,
+    DecimatorAssignment,
     FrequencyWindow,
     GuardPolicy,
     PayloadPath,
@@ -35,6 +37,8 @@ __all__ = [
     "Band",
     "BandPolarization",
     "DeactivatableModel",
+    "Decimator",
+    "DecimatorAssignment",
     "EffectiveDatedModel",
     "EquipmentProfile",
     "FrequencyWindow",

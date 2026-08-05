@@ -13,7 +13,7 @@ from typing import Any, cast
 from django import forms
 from django.forms import ModelChoiceField
 
-from inventory.models import GuardPolicy
+from inventory.models import DecimatorAssignment, Gateway, GuardPolicy
 from satnet_paths.constants import InputMode
 from satnet_paths.models import SatnetPath
 
@@ -34,8 +34,8 @@ class SatnetPathForm(forms.ModelForm):
             "canonical_center_hz",
             "valid_from",
             "valid_until",
-            "gw_id",
-            "decimator",
+            "gateway",
+            "decimator_assignment",
         ]
         widgets = {
             "valid_from": forms.DateTimeInput(attrs={"type": "datetime-local"}),
@@ -63,8 +63,27 @@ class SatnetPathForm(forms.ModelForm):
             "is selected. §9.2 stores the one you typed; the other is derived."
         )
         self.fields["canonical_center_hz"].label = "Centre frequency (Hz)"
-        self.fields["gw_id"].help_text = "Free text until OQ-09 confirms whether this is exclusive."
-        self.fields["decimator"].help_text = "Free text until OQ-10 confirms the same."
+
+        # **A-28.** The widget is a `datetime-local` input, which shows no zone at all and
+        # would otherwise be read as the operator's own. Every value here is UTC, in and out.
+        for name in ("valid_from", "valid_until"):
+            self.fields[name].label = f"{self.fields[name].label} (UTC)"
+            self.fields[name].help_text = "Entered and stored in UTC."
+
+        cast(ModelChoiceField, self.fields["gateway"]).queryset = Gateway.objects.filter(
+            is_active=True
+        )
+        cast(
+            ModelChoiceField, self.fields["decimator_assignment"]
+        ).queryset = DecimatorAssignment.objects.filter(is_active=True).select_related("decimator")
+        self.fields["gateway"].help_text = (
+            "A shared reference (A-26). Two allocations through the same Gateway do not "
+            "conflict on that account — contention is judged on spectrum resources."
+        )
+        self.fields["decimator_assignment"].help_text = (
+            "The Decimator configuration this Path consumes (A-27). Several Paths may share "
+            "one; two overlapping configurations on one Decimator are refused."
+        )
 
     def clean(self) -> dict[str, Any]:
         cleaned = super().clean() or {}

@@ -127,8 +127,14 @@ AUTH_PASSWORD_VALIDATORS = [
 #
 # Specification section 1: the complete application is English. USE_I18N stays off
 # because there is no second language to switch to, and leaving it on invites
-# half-translated strings. Timestamps are stored in UTC (section 14.1); the display
-# time zone is OQ-23 and is not yet configurable.
+# half-translated strings.
+#
+# UTC is the authoritative operational *and* display time zone — the OQ-23 answer, recorded
+# as A-28 and ADR-0022. TIME_ZONE is therefore not a display preference here: it is the zone
+# every validity check, overlap calculation and audit record is computed in, which is why
+# nothing activates a per-request zone. A local zone may later be offered as a *secondary*
+# display, and the way to add it is another column on the screen — never
+# `timezone.activate()`, which would reach the forms that parse an operator's input.
 # ---------------------------------------------------------------------------
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"

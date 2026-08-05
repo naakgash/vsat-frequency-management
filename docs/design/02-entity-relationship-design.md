@@ -209,7 +209,7 @@ The single operator-facing allocation record. Field groups:
 | Canonical side | `canonical_leg`, `canonical_window_id`, `canonical_center_hz`, `canonical_occupied_range int8range`, `canonical_allocated_range int8range`, `canonical_polarization` |
 | Translated side | `translated_leg`, `translated_window_id`, `translated_center_hz`, `translated_occupied_range`, `translated_allocated_range`, `translated_polarization` |
 | Equipment / IF | `equipment_profile_id`, `lo_hz`, `if_start_hz`, `if_center_hz`, `if_end_hz` (nullable — "where applicable") |
-| Hardware | `gw_id`, `decimator` — validated free text until **OQ-09** / **OQ-10** promote them to `HardwareResource` |
+| Hardware | `gateway_id` (labelled "GW ID") — a controlled reference that decides no contention (**A-26**); `decimator_assignment_id` — the time-bounded configuration this Path consumes (**A-27**). Both nullable. Answered by **OQ-09** / **OQ-10**; see ADR-0021 |
 | Audit | `created_*`, `updated_*` |
 
 Two decisions worth stating explicitly:
@@ -328,7 +328,8 @@ not a re-parse.
 | **ImportBatch** | `file_name`, `file_sha256`, `stage ∈ {DRY_RUN, COMMITTED, FAILED}`, `uploaded_by`, counts per classification, `batch_policy`. Commit verifies the hash matches the dry-run (§17.1). |
 | **ImportRow** | `batch_id`, `sheet`, `row_number`, `raw JSONB`, `normalized JSONB`, `classification ∈ {VALID, WARNING, ERROR, DUPLICATE, CONFLICT, NEEDS_MAPPING, IGNORED_FREE_CAPACITY}`, `messages JSONB`, `resulting_object_id`. |
 | **ImportMapping** | Remembered inventory reference mappings (spreadsheet label → UUID) so repeat imports do not re-ask. |
-| **HardwareResource / HardwareReservation** | Shipped, unpopulated. `HardwareReservation` gets its own exclusion constraint on `(resource_id, active_period)` when `resource.is_exclusive`. Gated on **OQ-09**/**OQ-10**. |
+| ~~**HardwareResource / HardwareReservation**~~ | **Not built.** The provisional position was one generic pair gated on **OQ-09**/**OQ-10**, and the answers went opposite ways: a GW ID is a shared reference that must never decide double-booking, while a Decimator is genuinely allocatable. Replaced by a foreign key to `Gateway` on one side and `Decimator` / `DecimatorAssignment` on the other. See ADR-0021. |
+| **Decimator / DecimatorAssignment** | `decimator` is the physical unit at a Hub. `decimator_assignment` records the input connection, processed range, bandwidth or decimation parameters, payload-configuration version and active period, with `excl_decimator_assignment_overlap` on `(decimator_id, active_period) WHERE is_active`. Ships empty (§26.20). |
 | **SavedView** | `user`, `name`, `page`, `filters JSONB`, `columns JSONB`, `is_shared` (§10.3). |
 | **SystemSetting** | Typed key/value with audit: suspended-reservation policy, separate-approver requirement, default input mode, display time zone. Every read goes through `operations.settings.get()`; no direct DB reads. |
 
