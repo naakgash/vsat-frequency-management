@@ -28,7 +28,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from beams.models import Beam
-from operations.templatetags.utc_tags import utc
+from inventory.templatetags.utc_tags import utc
 from satnet_paths.constants import InputMode, PathStatus
 from satnet_paths.forms import SatnetPathForm
 from satnet_paths.models import SatnetPath

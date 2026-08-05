@@ -1,5 +1,11 @@
 """Rendering a timestamp so that nobody has to guess which zone it is in. **A-28**, ADR-0022.
 
+Beside ``rf`` rather than in ``operations``, and for the layering reason rather than a
+conceptual one: display filters are loaded by name from templates but *imported* by other
+Python — S13's table cells call this one — and ``operations`` is the top of the module
+graph, so nothing may import from it. This is the lowest module that owns templates, which
+makes it the one place a filter can live and still be reachable from everywhere above.
+
 The **OQ-23** answer makes UTC the authoritative operational *and* display time zone:
 
     *"All persisted timestamps, validity checks, overlap calculations, API values and audit

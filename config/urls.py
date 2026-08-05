@@ -8,10 +8,12 @@ from __future__ import annotations
 
 from django.urls import include, path
 
-from operations import views as operations_views
+from reporting import views as reporting_views
 
 urlpatterns = [
-    path("", operations_views.HomeView.as_view(), name="home"),
+    # The dashboard (§26.11). Authenticated and scope-filtered: every figure on it is a
+    # query against what the reader may see.
+    path("", reporting_views.DashboardView.as_view(), name="home"),
     path("health/", include("operations.urls")),
     path("accounts/", include("accounts.urls")),
     path("administration/", include("accounts.admin_urls")),
@@ -20,6 +22,9 @@ urlpatterns = [
     path("beams/", include("beams.urls")),
     path("spectrum/", include("spectrum.urls")),
     path("satnets/", include("satnets.urls")),
+    # Before the Satnet Path include, because §10.3's table *is* the Satnet Path list and
+    # lives at that exact path. The include below keeps every per-record route under it.
+    path("", include("reporting.urls")),
     path("satnet-paths/", include("satnet_paths.urls")),
     # Mounted at the root, and after the Satnet Path routes, because the two decision URLs
     # live inside `/satnet-paths/<uuid>/` (`docs/design/03` §6) while the queue is its own

@@ -72,6 +72,9 @@ RETIRE_SATNET_PATH = "satnet_paths.retire_satnetpath"
 CANCEL_SATNET_PATH = "satnet_paths.cancel_satnetpath"
 REVISE_SATNET_PATH = "satnet_paths.revise_satnetpath"
 VIEW_APPROVALS = "approvals.view_approvaldecision"
+#: §10.3. Saving a table setup is a personal working tool, not an operational action, so
+#: every role holds it — including an Observer, whose whole job is reading tables.
+MANAGE_SAVED_VIEWS = "reporting.add_savedview"
 
 #: Read access to inventory is uniform across the five entities.
 _ALL_ROLES = (Role.ADMIN, Role.OPERATOR, Role.APPROVER, Role.OBSERVER)
@@ -135,4 +138,5 @@ CAPABILITY_MATRIX: dict[str, tuple[str, ...]] = {
     # it stays with the people who work with them day to day.
     CANCEL_SATNET_PATH: (Role.ADMIN, Role.OPERATOR, Role.APPROVER),
     VIEW_APPROVALS: _ALL_ROLES,
+    MANAGE_SAVED_VIEWS: _ALL_ROLES,
 }

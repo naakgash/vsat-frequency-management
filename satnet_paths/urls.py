@@ -11,7 +11,6 @@ app_name = "satnet_paths"
 TRANSITION_ACTIONS = "plan|submit|suspend|resume|retire|cancel"
 
 urlpatterns = [
-    path("", views.SatnetPathListView.as_view(), name="list"),
     # Literal segments before `<uuid:pk>/`, the trap S5, S8 and S10 all hit.
     path("satnets/<uuid:satnet_pk>/new/", views.SatnetPathCreateView.as_view(), name="create"),
     path(
