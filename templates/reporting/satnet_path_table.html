@@ -62,6 +62,10 @@ link show the recipient the same table (§10.3).
   <div class="d-flex gap-2 mt-3 flex-wrap">
     <button class="btn btn-sm btn-primary" type="submit">Apply</button>
     <a class="btn btn-sm btn-outline-secondary" href="{% url 'reporting:satnet-paths' %}">Reset</a>
+    {% if perms.imports_exports.export_data %}
+      {# The export is the table: same filters, same columns, same scope-filtered queryset. #}
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'exports:satnet-paths' %}?{{ request.GET.urlencode }}">Export</a>
+    {% endif %}
     <button class="btn btn-sm btn-outline-secondary" type="submit"
             formaction="{% url 'reporting:save-view' %}" formmethod="post"
             name="save" value="1"

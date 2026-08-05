@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "satnet_paths",
     "approvals",
     "reporting",
+    "imports_exports",
     "operations",
 ]
 
