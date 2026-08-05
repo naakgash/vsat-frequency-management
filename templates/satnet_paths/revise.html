@@ -3,7 +3,7 @@
 {% block title %}Revise {{ path.code }}{% endblock %}
 {% block content %}
 <nav aria-label="breadcrumb"><ol class="breadcrumb">
-  <li class="breadcrumb-item"><a href="{% url 'satnet_paths:list' %}">Satnet Paths</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'reporting:satnet-paths' %}">Satnet Paths</a></li>
   <li class="breadcrumb-item"><a href="{{ path.get_absolute_url }}">{{ path.code }}</a></li>
   <li class="breadcrumb-item active" aria-current="page">Revise</li>
 </ol></nav>

@@ -10,7 +10,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
-from django.views.generic import DetailView, ListView
+from django.views.generic import DetailView
 
 from accounts.mixins import AuditedPermissionRequiredMixin
 from satnet_paths import lifecycle, selectors, services
@@ -24,15 +24,6 @@ from satnet_paths.forms import SatnetPathForm
 from satnet_paths.models import SatnetPath
 from satnets import selectors as satnet_selectors
 from satnets.models import Satnet
-
-
-class SatnetPathListView(LoginRequiredMixin, AuditedPermissionRequiredMixin, ListView):
-    permission_required = VIEW_SATNET_PATH
-    template_name = "satnet_paths/list.html"
-    context_object_name = "paths"
-
-    def get_queryset(self) -> Any:
-        return selectors.current(self.request.user)
 
 
 class SatnetPathDetailView(LoginRequiredMixin, AuditedPermissionRequiredMixin, DetailView):

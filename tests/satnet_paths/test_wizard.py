@@ -234,7 +234,7 @@ def test_an_operator_without_grants_is_refused_on_post(client, world):
 def test_every_role_may_read_the_list(client, world):
     for role in (Role.ADMIN, Role.OPERATOR, Role.APPROVER, Role.OBSERVER):
         client.force_login(make_user(f"reader-{role}", roles=[role]))
-        assert client.get(reverse("satnet_paths:list")).status_code == 200
+        assert client.get(reverse("reporting:satnet-paths")).status_code == 200
 
 
 def test_the_list_shows_only_the_current_revision(client, world):
@@ -244,7 +244,7 @@ def test_the_list_shows_only_the_current_revision(client, world):
     client.post(_url(world), _post(status=PathStatus.PLANNED))
     path = SatnetPath.objects.get()
 
-    response = client.get(reverse("satnet_paths:list"))
+    response = client.get(reverse("reporting:satnet-paths"))
 
     assert list(response.context["paths"]) == [path]
 

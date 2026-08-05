@@ -20,7 +20,6 @@ from django.urls import URLPattern, URLResolver, get_resolver
 
 # Endpoints reachable without authentication, and why.
 PUBLIC_ENDPOINTS: dict[str, str] = {
-    "home": "Landing page. Shows no scoped data; becomes the dashboard in S13.",
     "health-live": "Liveness probe. Polled by the orchestrator before any session exists.",
     "health-ready": "Readiness probe. Same reason; discloses only check names.",
     "accounts:login": "The sign-in form itself.",

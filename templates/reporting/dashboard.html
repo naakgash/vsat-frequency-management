@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load rf %}
+{% block title %}Dashboard &middot; VSAT Spectrum Allocation Platform{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Dashboard</h1>
+<p class="text-body-secondary">
+  Everything here is counted within your own scope, and computed on every load — §16 forbids a
+  second source of truth for capacity, and the same reasoning applies to every figure below.
+</p>
+
+<div class="row g-4 mt-1">
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body">
+      <p class="text-uppercase text-body-secondary small mb-1">Satnet Paths</p>
+      <p class="display-6 mb-0 rf-value">{{ dashboard.total_paths }}</p>
+      <p class="small text-body-secondary mb-0">{{ dashboard.reserving_paths }} holding spectrum</p>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body">
+      <p class="text-uppercase text-body-secondary small mb-1">Awaiting approval</p>
+      <p class="display-6 mb-0 rf-value">{{ dashboard.awaiting_approval }}</p>
+      <a class="small" href="{% url 'approvals:queue' %}">Open the queue</a>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body">
+      <p class="text-uppercase text-body-secondary small mb-1">Active Beams</p>
+      <p class="display-6 mb-0 rf-value">{{ dashboard.active_beams }}</p>
+      <a class="small" href="{% url 'beams:list' %}">Beams</a>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body">
+      <p class="text-uppercase text-body-secondary small mb-1">Satnets</p>
+      <p class="display-6 mb-0 rf-value">{{ dashboard.satnets }}</p>
+      <a class="small" href="{% url 'satnets:list' %}">Satnets</a>
+    </div></div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">By status</h2>
+      <table class="table table-sm mb-0">
+        <caption class="visually-hidden">Satnet Paths by lifecycle status</caption>
+        <thead><tr><th scope="col">Status</th><th scope="col" class="text-end">Count</th><th scope="col">Holds spectrum</th></tr></thead>
+        <tbody>
+          {% for entry in dashboard.statuses %}
+            <tr{% if not entry.count %} class="text-body-secondary"{% endif %}>
+              <th scope="row" class="fw-normal">
+                <a href="{% url 'reporting:satnet-paths' %}?status={{ entry.status }}">{{ entry.label }}</a>
+              </th>
+              <td class="text-end rf-value">{{ entry.count }}</td>
+              <td>{% if entry.reserves_spectrum %}Yes{% else %}No{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6 card-title text-uppercase text-body-secondary">Beam utilisation</h2>
+      <p class="small text-body-secondary">
+        Occupancy within each Beam's active spectrum assignments (ADR-0019) — not across the
+        whole Payload Path Window, which may belong to more than one Beam.
+      </p>
+      {% for entry in dashboard.utilisation %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between small">
+            <span>
+              <a href="{{ entry.beam.get_absolute_url }}">{{ entry.beam.code }}</a>
+              <span class="text-body-secondary">{{ entry.direction }} &middot; {{ entry.leg }}</span>
+            </span>
+            <span class="rf-value">{{ entry.free_hz|mhz }} MHz free of {{ entry.total_hz|mhz }}</span>
+          </div>
+          <div class="progress" role="progressbar" aria-label="{{ entry.beam.code }} utilisation"
+               aria-valuenow="{{ entry.percent_used }}" aria-valuemin="0" aria-valuemax="100"
+               style="height: .5rem;">
+            <div class="progress-bar" style="width: {{ entry.percent_used }}%"></div>
+          </div>
+          <p class="small text-body-secondary mb-0">
+            Largest gap {{ entry.largest_gap_hz|mhz }} MHz.
+          </p>
+        </div>
+      {% empty %}
+        <p class="small text-body-secondary mb-0">
+          No active Beam has a spectrum assignment yet, so there is no capacity to report.
+        </p>
+      {% endfor %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}

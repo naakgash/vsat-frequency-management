@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% load rf %}
+{% load utc_tags %}
+{% load spec_tags %}
+{% load table_tags %}
+{% block title %}Satnet Paths{% endblock %}
+{% block content %}
+<h1 class="h3">Satnet Paths</h1>
+<p class="text-body-secondary">
+  The current revision of each allocation you may see. Superseded revisions stay in the record
+  and are reached from a Path's own page.
+</p>
+
+{% comment %}
+The table's whole state lives in the query string — filters, chosen columns and the sort. That
+is what makes a saved view a redirect rather than a second code path, and what makes a copied
+link show the recipient the same table (§10.3).
+{% endcomment %}
+<form method="get" class="card mb-3"><div class="card-body">
+  <div class="row g-3 align-items-end">
+    {% for filter in filters %}
+      <div class="col-12 col-md-6 col-lg-3">
+        <label class="form-label" for="f-{{ filter.key }}">{{ filter.label }}</label>
+        {% if filter.choices %}
+          <select class="form-select form-select-sm" id="f-{{ filter.key }}" name="{{ filter.key }}">
+            <option value="">Any</option>
+            {% for value, label in filter.choices %}
+              <option value="{{ value }}"{% if active_filters|get:filter.key == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input class="form-control form-control-sm" id="f-{{ filter.key }}" name="{{ filter.key }}"
+                 value="{{ active_filters|get:filter.key }}"
+                 {% if filter.key == 'valid_at' %}type="datetime-local"{% else %}type="text"{% endif %}>
+        {% endif %}
+        {% if filter.help_text %}<div class="form-text small">{{ filter.help_text }}</div>{% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <details class="mt-3">
+    <summary class="small">Columns ({{ columns|length }} shown)</summary>
+    <div class="row g-3 mt-1">
+      {% for key, title, group_columns in groups %}
+        <div class="col-12 col-md-6 col-lg-3">
+          <p class="fw-semibold small mb-1">{{ title }}</p>
+          {% for column in group_columns %}
+            <div class="form-check form-check-sm">
+              <input class="form-check-input" type="checkbox" name="column" value="{{ column.key }}"
+                     id="c-{{ column.key }}"{% if column.key in chosen_keys %} checked{% endif %}>
+              <label class="form-check-label small" for="c-{{ column.key }}">
+                {% if column.spec_code %}{% spec_label column.spec_code %}{% else %}{{ column.label }}{% endif %}
+              </label>
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+  </details>
+
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <div class="d-flex gap-2 mt-3 flex-wrap">
+    <button class="btn btn-sm btn-primary" type="submit">Apply</button>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'reporting:satnet-paths' %}">Reset</a>
+    <button class="btn btn-sm btn-outline-secondary" type="submit"
+            formaction="{% url 'reporting:save-view' %}" formmethod="post"
+            name="save" value="1"
+            onclick="this.form.querySelector('#save-name').required = true">Save this view</button>
+    <span class="input-group input-group-sm" style="max-width: 22rem;">
+      <input class="form-control" id="save-name" name="name" placeholder="Name for the saved view">
+      <span class="input-group-text">
+        <input class="form-check-input mt-0 me-1" type="checkbox" name="is_shared" id="is_shared">
+        <label class="form-check-label small" for="is_shared">Share</label>
+      </span>
+    </span>
+  </div>
+  {% csrf_token %}
+</div></form>
+
+{% if applied %}
+  <p class="small text-body-secondary">
+    Filtered by {{ applied|join:" &middot; " }}. A table that is silently narrowed is how an
+    allocation appears to have vanished.
+  </p>
+{% endif %}
+
+{% if saved_views %}
+  <div class="mb-3 d-flex gap-2 flex-wrap align-items-center">
+    <span class="small text-body-secondary">Saved views:</span>
+    {% for view in saved_views %}
+      <span class="badge text-bg-light border">
+        <a href="{% url 'reporting:satnet-paths' %}?{{ view.query_string }}">{{ view.name }}</a>
+        {% if view.is_shared %}<span title="Shared with everybody">&#183; shared</span>{% endif %}
+        {% if view.owner_id == request.user.pk %}
+          <form method="post" action="{% url 'reporting:delete-view' pk=view.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button class="btn btn-link btn-sm p-0 align-baseline text-danger" type="submit"
+                    aria-label="Delete the saved view {{ view.name }}">&times;</button>
+          </form>
+        {% endif %}
+      </span>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="table-responsive"><table class="table table-hover table-sm align-middle">
+  <caption class="visually-hidden">Satnet paths</caption>
+  <thead><tr>
+    {% for column in columns %}
+      <th scope="col" {% if column.render == 'mhz' or column.render == 'number' %}class="text-end"{% endif %}>
+        {% if column.sortable %}
+          <a class="text-decoration-none" href="?{% sort_query column.key sort %}">
+            {% if column.spec_code %}{% spec_code column.spec_code %}{% else %}{{ column.label }}{% endif %}
+            {% if sort == column.key %}&uarr;{% elif sort == '-'|add:column.key %}&darr;{% endif %}
+          </a>
+        {% else %}
+          {% if column.spec_code %}{% spec_code column.spec_code %}{% else %}{{ column.label }}{% endif %}
+        {% endif %}
+      </th>
+    {% endfor %}
+  </tr></thead>
+  <tbody>
+    {% for path in paths %}
+      <tr>
+        {% for column in columns %}
+          <td {% if column.render == 'mhz' or column.render == 'number' %}class="text-end rf-value"{% endif %}>
+            {% cell path column %}
+          </td>
+        {% endfor %}
+      </tr>
+    {% empty %}
+      <tr><td colspan="{{ columns|length }}" class="text-center text-body-secondary py-4">
+        Nothing matches. Clear the filters, or create a Satnet Path from a Satnet under a Beam
+        whose spectrum assignments and resources are configured.
+      </td></tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

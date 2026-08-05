@@ -94,6 +94,7 @@ exist in SQLite, so a green SQLite suite would prove nothing about the behaviour
 | S11 — Guided Satnet Path creation | [docs/slices/11-satnet-path-wizard.md](docs/slices/11-satnet-path-wizard.md) | §26.9, §26.10, §26.11, §26.13, §26.16 met; §26.12 partial |
 | S11a — Controlled hardware references and UTC | [docs/slices/11a-controlled-hardware-references-and-utc.md](docs/slices/11a-controlled-hardware-references-and-utc.md) | Answers OQ-09, OQ-10, OQ-23; widens the OQ-22 harness; §26.20 held |
 | S12 — Lifecycle, approvals and revisions | [docs/slices/12-lifecycle-approvals-revisions.md](docs/slices/12-lifecycle-approvals-revisions.md) | §26.14 met; §26.17 advanced; OQ-08 and OQ-11 implemented as settings |
+| S13 — Table, saved views and dashboard | [docs/slices/13-table-saved-views-dashboard.md](docs/slices/13-table-saved-views-dashboard.md) | §26.11 met; §26.2/§26.3 advanced; table headings come from the Specification Dictionary |
 
 Slices are listed in the order they were delivered, which is not always numerical: S0 was
 written once there was a schema to generate intake sheets from, and the lettered slices are
