@@ -9,6 +9,7 @@ dependencies = [
     "Django>=5.2.7,<5.3",
     "psycopg[binary]>=3.2.10,<4",
     "gunicorn>=23.0.0,<24",
+    "openpyxl>=3.1,<4",
 ]
 
 [dependency-groups]
@@ -129,6 +130,7 @@ django_settings_module = "config.settings.test"
 root_packages = [
     "config",
     "operations",
+    "imports_exports",
     "reporting",
     "approvals",
     "satnet_paths",
@@ -148,6 +150,7 @@ name = "config is the composition root and nothing imports it"
 type = "forbidden"
 source_modules = [
     "operations",
+    "imports_exports",
     "reporting",
     "approvals",
     "satnet_paths",
@@ -171,6 +174,7 @@ source_modules = ["audit"]
 forbidden_modules = [
     "accounts",
     "operations",
+    "imports_exports",
     "reporting",
     "approvals",
     "specifications",
@@ -188,6 +192,7 @@ type = "forbidden"
 source_modules = ["accounts"]
 forbidden_modules = [
     "operations",
+    "imports_exports",
     "reporting",
     "approvals",
     "specifications",
@@ -201,6 +206,7 @@ name = "module layering"
 type = "layers"
 layers = [
     "operations",
+    "imports_exports",
     "reporting",
     "approvals",
     "satnet_paths",

@@ -75,6 +75,9 @@ VIEW_APPROVALS = "approvals.view_approvaldecision"
 #: §10.3. Saving a table setup is a personal working tool, not an operational action, so
 #: every role holds it — including an Observer, whose whole job is reading tables.
 MANAGE_SAVED_VIEWS = "reporting.add_savedview"
+#: §17.2. Every role exports, and scope narrows what comes out — an Observer exporting
+#: "all Satnet Paths" receives the same queryset the screen would have shown them.
+EXPORT_DATA = "imports_exports.export_data"
 
 #: Read access to inventory is uniform across the five entities.
 _ALL_ROLES = (Role.ADMIN, Role.OPERATOR, Role.APPROVER, Role.OBSERVER)
@@ -139,4 +142,5 @@ CAPABILITY_MATRIX: dict[str, tuple[str, ...]] = {
     CANCEL_SATNET_PATH: (Role.ADMIN, Role.OPERATOR, Role.APPROVER),
     VIEW_APPROVALS: _ALL_ROLES,
     MANAGE_SAVED_VIEWS: _ALL_ROLES,
+    EXPORT_DATA: _ALL_ROLES,
 }
