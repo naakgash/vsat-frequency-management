@@ -1,0 +1,56 @@
+{% load utc_tags %}
+{% comment %}
+One table of events, shared by the search screen and the object history. Shared rather than
+written twice because the two differ only in ordering and in which columns are worth showing —
+and a trail rendered two ways is a trail somebody can be shown two versions of.
+{% endcomment %}
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <caption class="visually-hidden">Audit events</caption>
+    <thead>
+      <tr>
+        <th scope="col">When</th>
+        <th scope="col">Actor</th>
+        <th scope="col">Action</th>
+        <th scope="col">Outcome</th>
+        {% if not hide_object %}<th scope="col">Object</th>{% endif %}
+        <th scope="col">What happened</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for event in events %}
+        <tr{% if event.outcome == 'FAILURE' %} class="table-warning"{% endif %}>
+          <th scope="row" class="fw-normal small text-nowrap">
+            <a href="{% url 'audit:event' event.pk %}">{{ event.occurred_at|utc:"Y-m-d H:i:s" }}</a>
+          </th>
+          <td class="small">{{ event.actor_username|default:"—" }}</td>
+          <td class="small"><code>{{ event.action }}</code></td>
+          <td class="small">
+            <span class="badge text-bg-{% if event.outcome == 'SUCCESS' %}secondary{% else %}danger{% endif %}">
+              {{ event.get_outcome_display }}
+            </span>
+          </td>
+          {% if not hide_object %}
+            <td class="small">
+              {% if event.object_id %}
+                <a href="{% url 'audit:history' event.object_type event.object_id %}">
+                  {{ event.object_repr|default:event.object_type }}
+                </a>
+              {% else %}—{% endif %}
+            </td>
+          {% endif %}
+          <td class="small">
+            {{ event.message|default:"—" }}
+            {% if event.change_reason %}
+              <div class="text-body-secondary">Reason: {{ event.change_reason }}</div>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="{% if hide_object %}5{% else %}6{% endif %}" class="text-body-secondary">
+          No events match.
+        </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

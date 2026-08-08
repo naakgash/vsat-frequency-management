@@ -1,0 +1,32 @@
+{% comment %}
+The field-level before/after difference §18 asks for. Only the fields that changed: a table of
+sixty rows, fifty-eight of which say the same thing twice, is a table nobody reads to the end.
+{% endcomment %}
+{% if changes %}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <caption class="visually-hidden">Fields this event changed</caption>
+      <thead>
+        <tr>
+          <th scope="col">Field</th>
+          <th scope="col">Before</th>
+          <th scope="col">After</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for field, change in changes.items %}
+          <tr>
+            <th scope="row" class="fw-normal small"><code>{{ field }}</code></th>
+            <td class="small text-body-secondary">{{ change.before|default_if_none:"—" }}</td>
+            <td class="small">{{ change.after|default_if_none:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="small text-body-secondary">
+    No field changed. An event with a payload and no difference is a record of something that
+    happened without altering the record — a read, a refusal, or a save that changed nothing.
+  </p>
+{% endif %}

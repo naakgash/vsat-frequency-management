@@ -18,8 +18,8 @@ from django import template
 from django.utils.html import format_html
 from django.utils.safestring import SafeString, mark_safe
 
+from audit.templatetags.utc_tags import utc
 from inventory.templatetags.rf import mhz
-from inventory.templatetags.utc_tags import utc
 
 register = template.Library()
 

@@ -83,7 +83,17 @@ Each becomes a real link in the slice named in its title attribute.
         {% else %}
           <li class="nav-item"><span class="nav-link disabled" title="Administrators import; every role exports from the Satnet Path table">Imports</span></li>
         {% endif %}
-        <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S16">Audit</span></li>
+        {% comment %}
+        An Observer holds neither audit capability (`docs/design/03` §2.1) and sees no entry at
+        all — their job is reading operational data, not a security trail. An Operator and an
+        Approver see their own actions; an administrator sees everything.
+        {% endcomment %}
+        {% if perms.audit.view_auditevent %}
+          <li class="nav-item">
+            <a class="nav-link{% if request.resolver_match.app_name == 'audit' %} active{% endif %}"
+               href="{% url 'audit:search' %}">Audit</a>
+          </li>
+        {% endif %}
         {% comment %}
         Hiding this link is presentation only. The views themselves enforce the
         capability in the backend, and tests POST directly to them to prove it

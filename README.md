@@ -6,7 +6,7 @@ Replaces spreadsheet-based frequency planning with a controlled multi-user appli
 the hierarchy `Satellite → Beam → Satnet → Satnet Path`, with derived engineering values, guided
 operator workflows, and overlap prevention enforced at the UI, service and PostgreSQL layers.
 
-**Status:** Slices **S1–S15** delivered, plus the lettered schema slices S0, S9a, S10a and S11a.
+**Status:** Slices **S1–S16** delivered, plus the lettered schema slices S0, S9a, S10a and S11a.
 The application foundation, PostgreSQL 16 with the required extensions, health endpoints, the
 English interface shell and CI guard rails; authentication with four roles behind a single backend
 authorization choke point and an append-only audit trail; the admin-managed Specification
@@ -16,8 +16,8 @@ translation, RF/IF conversion and equipment matching; the Beam Builder and its s
 assignments; **reservations and the PostgreSQL exclusion constraint that is the last line of
 defence against an overlap**; Satnets, the guided Satnet Path wizard, the §15.2 lifecycle with
 approvals and on-air revisions; the table, saved views and dashboard; and both halves of §17 in the
-platform's own shape — the normalized export and the two-stage import. See the
-[slice plan](docs/design/05-vertical-slice-plan.md) for what remains.
+platform's own shape — the normalized export and the two-stage import; and the audit trail given
+a screen. See the [slice plan](docs/design/05-vertical-slice-plan.md) for what remains.
 
 The inventory ships **empty** — no satellite, band, window, translation, polarization mapping or
 guard value. Every value it would hold is an unresolved RF engineering question, and a
@@ -98,6 +98,7 @@ exist in SQLite, so a green SQLite suite would prove nothing about the behaviour
 | S13 — Table, saved views and dashboard | [docs/slices/13-table-saved-views-dashboard.md](docs/slices/13-table-saved-views-dashboard.md) | §26.11 met; §26.2/§26.3 advanced; table headings come from the Specification Dictionary |
 | S14 — Export | [docs/slices/14-export.md](docs/slices/14-export.md) | §26.19 met for the normalized export; §26.17 advanced; §21.12 enforced at one choke point; legacy layout gated on OQ-18 |
 | S15 — Import: dry-run and commit | [docs/slices/15-import-dry-run-and-commit.md](docs/slices/15-import-dry-run-and-commit.md) | §26.19 met for the import; §26.16 held from a new angle; SHA-256 verified between the two stages; free-capacity rows ignored, never imported |
+| S16 — Audit UI | [docs/slices/16-audit-ui.md](docs/slices/16-audit-ui.md) | §26.17 met; search by actor, object, period, request and import batch; field-level differences; no write route exists |
 
 Slices are listed in the order they were delivered, which is not always numerical: S0 was
 written once there was a schema to generate intake sheets from, and the lettered slices are

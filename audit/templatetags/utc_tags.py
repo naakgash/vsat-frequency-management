@@ -1,10 +1,16 @@
 """Rendering a timestamp so that nobody has to guess which zone it is in. **A-28**, ADR-0022.
 
-Beside ``rf`` rather than in ``operations``, and for the layering reason rather than a
-conceptual one: display filters are loaded by name from templates but *imported* by other
-Python — S13's table cells call this one — and ``operations`` is the top of the module
-graph, so nothing may import from it. This is the lowest module that owns templates, which
-makes it the one place a filter can live and still be reachable from everywhere above.
+**In ``audit`` for the layering reason, not a conceptual one, and it has moved once before.**
+Display filters are loaded by name from templates but *imported* by other Python — S13's table
+cells call this one — so the filter has to live in the lowest module that owns templates, or
+some module above it ends up depending on one beside it. S13 put it in ``inventory`` because
+that was the lowest at the time; S16 gives ``audit`` its own screens, and ``audit`` is the
+bottom of the graph and may import nothing. Moving the filter down is what lets the audit
+templates render a timestamp without the trail depending on the inventory.
+
+There is exactly one definition of this rule, which is the point (§2, ADR-0011). A second copy
+in ``audit`` would be a second answer to "how does this platform print a time", and the two
+would part company the first time one of them was improved.
 
 The **OQ-23** answer makes UTC the authoritative operational *and* display time zone:
 
@@ -33,7 +39,8 @@ from django.template.defaultfilters import date as date_filter
 
 register = template.Library()
 
-#: Em dash, matching ``inventory.templatetags.rf`` and the specification tags.
+#: Em dash, matching ``inventory.templatetags.rf`` and the specification tags. Restated rather
+#: than imported: this module may import nothing (`docs/design/01` §1).
 EMPTY = "—"
 
 #: Minute resolution. Seconds are noise on a screen about validity periods, and the platform

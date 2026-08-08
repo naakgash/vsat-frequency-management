@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load utc_tags %}
+{% block title %}{{ event.action }}{% endblock %}
+{% block content %}
+<nav aria-label="Breadcrumb">
+  <ol class="breadcrumb small">
+    <li class="breadcrumb-item"><a href="{% url 'audit:search' %}">Audit</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ event.action }}</li>
+  </ol>
+</nav>
+
+<h1 class="h3">{{ event.action }}</h1>
+<p class="text-body-secondary">{{ event.message|default:"" }}</p>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">What happened</h2>
+      <dl class="row mb-0 small">
+        <dt class="col-4">When</dt><dd class="col-8">{{ event.occurred_at|utc:"Y-m-d H:i:s" }}</dd>
+        <dt class="col-4">Actor</dt>
+        <dd class="col-8">
+          {% if event.actor_username %}
+            <a href="?actor={{ event.actor_username }}">{{ event.actor_username }}</a>
+          {% else %}
+            anonymous or system
+          {% endif %}
+        </dd>
+        <dt class="col-4">Outcome</dt>
+        <dd class="col-8">
+          <span class="badge text-bg-{% if event.outcome == 'SUCCESS' %}secondary{% else %}danger{% endif %}">
+            {{ event.get_outcome_display }}
+          </span>
+        </dd>
+        {% if event.change_reason %}
+          <dt class="col-4">Reason</dt><dd class="col-8">{{ event.change_reason }}</dd>
+        {% endif %}
+      </dl>
+    </div></div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Where it came from</h2>
+      <dl class="row mb-0 small">
+        <dt class="col-4">Object</dt>
+        <dd class="col-8">
+          {% if event.object_id %}
+            <a href="{% url 'audit:history' event.object_type event.object_id %}">
+              {{ event.object_repr|default:event.object_type }}
+            </a>
+            <div class="text-body-secondary"><code>{{ event.object_type }}</code></div>
+          {% else %}—{% endif %}
+        </dd>
+        <dt class="col-4">Request</dt>
+        <dd class="col-8">
+          {% if event.request_id %}
+            <a href="{% url 'audit:search' %}?request={{ event.request_id }}">
+              everything this request did
+            </a>
+          {% else %}—{% endif %}
+        </dd>
+        <dt class="col-4">Import</dt>
+        <dd class="col-8">
+          {% if event.import_batch_id %}
+            <a href="{% url 'audit:search' %}?batch={{ event.import_batch_id }}">
+              everything this import did
+            </a>
+          {% else %}—{% endif %}
+        </dd>
+        <dt class="col-4">Source</dt>
+        <dd class="col-8">{{ event.source_ip|default:"—" }}</dd>
+      </dl>
+    </div></div>
+  </div>
+</div>
+
+<h2 class="h5">What changed</h2>
+{% include "audit/_changes.html" %}
+
+{% if has_payload %}
+  <details class="mt-3">
+    <summary class="small">The full recorded state</summary>
+    <div class="row g-3 mt-1">
+      <div class="col-12 col-lg-6">
+        <p class="small fw-semibold mb-1">Before</p>
+        <pre class="small border rounded p-2 mb-0"><code>{{ event.before|default:"—" }}</code></pre>
+      </div>
+      <div class="col-12 col-lg-6">
+        <p class="small fw-semibold mb-1">After</p>
+        <pre class="small border rounded p-2 mb-0"><code>{{ event.after|default:"—" }}</code></pre>
+      </div>
+    </div>
+    {% comment %}
+    Sensitive values were redacted on the way *in* (`audit.services._sanitize`), not on the way
+    out. A password hash in this table would be a credential in a record that can never be
+    corrected or deleted, so it never reaches it.
+    {% endcomment %}
+  </details>
+{% endif %}
+{% endblock %}

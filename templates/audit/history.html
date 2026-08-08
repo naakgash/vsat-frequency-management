@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load utc_tags %}
+{% block title %}History — {{ object_repr|default:object_type }}{% endblock %}
+{% block content %}
+<nav aria-label="Breadcrumb">
+  <ol class="breadcrumb small">
+    <li class="breadcrumb-item"><a href="{% url 'audit:search' %}">Audit</a></li>
+    <li class="breadcrumb-item active" aria-current="page">History</li>
+  </ol>
+</nav>
+
+<h1 class="h3">{{ object_repr|default:object_type }}</h1>
+<p class="text-body-secondary">
+  Everything recorded about this record, oldest first. <code>{{ object_type }}</code>
+  <code>{{ object_id }}</code>.
+</p>
+
+{% if entries %}
+  {% comment %}
+  Oldest first, unlike every other listing in the product: a history is read as an account of
+  what happened, and one that starts with the ending is a list of events rather than a story.
+  {% endcomment %}
+  <ol class="list-unstyled">
+    {% for entry in entries %}
+      <li class="border-start border-3 ps-3 pb-3 mb-3
+                 {% if entry.event.outcome == 'FAILURE' %}border-danger{% else %}border-secondary-subtle{% endif %}">
+        <p class="mb-1">
+          <a class="fw-semibold text-decoration-none" href="{% url 'audit:event' entry.event.pk %}">
+            {{ entry.event.action }}
+          </a>
+          <span class="text-body-secondary small">
+            — {{ entry.event.actor_username|default:"anonymous or system" }},
+            {{ entry.event.occurred_at|utc:"Y-m-d H:i:s" }}
+          </span>
+        </p>
+        {% if entry.event.message %}<p class="small mb-1">{{ entry.event.message }}</p>{% endif %}
+        {% if entry.event.change_reason %}
+          <p class="small text-body-secondary mb-1">Reason: {{ entry.event.change_reason }}</p>
+        {% endif %}
+        {% if entry.changes %}
+          {% include "audit/_changes.html" with changes=entry.changes %}
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+{% else %}
+  <p class="text-body-secondary">
+    Nothing recorded about this record that you may read. An Operator and an Approver see their
+    own actions; an administrator sees every action.
+  </p>
+{% endif %}
+{% endblock %}

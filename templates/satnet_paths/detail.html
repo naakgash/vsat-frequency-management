@@ -101,6 +101,18 @@
           </li>
         {% endfor %}
       </ol>
+      {% comment %}
+      The revision chain says what the allocation *was*; the audit trail says who did what to it
+      and when (§18). Linked from here rather than duplicated: the two answer different
+      questions and one screen for each is one place to keep right.
+      {% endcomment %}
+      {% if perms.audit.view_auditevent %}
+        <p class="small mt-3 mb-0">
+          <a href="{% url 'audit:history' 'satnet_paths.SatnetPath' path.pk %}">
+            Everything recorded about this allocation
+          </a>
+        </p>
+      {% endif %}
     </div></div>
   </div>
 
