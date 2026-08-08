@@ -101,6 +101,22 @@ class AuditEvent(models.Model):
             # Field-level difference search (section 18).
             GinIndex(fields=["before"], name="audit_before_gin_idx"),
             GinIndex(fields=["after"], name="audit_after_gin_idx"),
+            # "What did that import actually change" — one indexed query, added in S16 because
+            # S15 is what first gave the column values. **Partial**: almost every event in this
+            # table has no batch, and an index over those nulls would be mostly dead weight on
+            # the busiest write path in the product.
+            models.Index(
+                fields=["import_batch_id", "-occurred_at"],
+                name="audit_import_batch_idx",
+                condition=models.Q(import_batch_id__isnull=False),
+            ),
+            # The same shape of question for one HTTP request: a single save writes several
+            # events, and the request id is what ties them together.
+            models.Index(
+                fields=["request_id", "occurred_at"],
+                name="audit_request_idx",
+                condition=models.Q(request_id__isnull=False),
+            ),
         ]
 
     def __str__(self) -> str:
