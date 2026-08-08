@@ -24,6 +24,14 @@ PUBLIC_ENDPOINTS: dict[str, str] = {
     "health-ready": "Readiness probe. Same reason; discloses only check names.",
     "accounts:login": "The sign-in form itself.",
     "accounts:logout": "Sign-out is safe for an anonymous caller; it is a no-op.",
+    "accounts:mfa-verify": (
+        "Step two of signing in, and unauthenticated by design (section 21). Nobody is "
+        "signed in yet — that is the whole point: the password has been accepted and the "
+        "session holds a *pending* account until a code is entered. Guarding this with "
+        "LoginRequiredMixin would make it unreachable by the only people who need it. It is "
+        "not open: it refuses every request with no pending sign-in in the session, and that "
+        "state expires."
+    ),
 }
 
 # Views that delegate authorization to the service they call, and why that is correct.
@@ -31,6 +39,10 @@ SERVICE_AUTHORIZED: dict[str, str] = {
     "administration:user-assign-roles": (
         "Calls accounts.services.set_user_roles, which performs policy.require. "
         "Duplicating the check in the view invites the two copies to diverge."
+    ),
+    "administration:user-reset-mfa": (
+        "Calls policy.require(MANAGE_USERS) before anything else, then "
+        "accounts.mfa_services.reset. Same reasoning as the roles view above."
     ),
 }
 

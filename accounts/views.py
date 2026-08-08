@@ -25,13 +25,28 @@ from accounts.models import User
 
 
 class LoginView(auth_views.LoginView):
-    """Sign in, with throttling and audit."""
+    """Sign in, with throttling, audit and — where §21 requires one — a second factor."""
 
     template_name = "accounts/login.html"
     authentication_form = ThrottledAuthenticationForm
     redirect_authenticated_user = True
 
     def form_valid(self, form: AuthenticationForm) -> HttpResponse:
+        """The password was right. Whether that is enough depends on the account. §21.
+
+        For an account carrying a confirmed second factor this deliberately does **not** call
+        ``super().form_valid()``, because that calls ``login()`` — and a flow that signs
+        somebody in and then asks for a code is a flow where the password alone is enough for
+        everything that happens before the redirect. The pending sign-in goes in the session
+        and `MfaVerifyView` finishes it.
+        """
+        from accounts import mfa_views
+
+        user = form.get_user()
+        next_step = mfa_views.next_step_for(self.request, user)
+        if next_step is not None:
+            return HttpResponseRedirect(next_step)
+
         response = super().form_valid(form)
         # Runs after login(), so the session user is the authenticated account. The
         # cast states that; unlike the logout path below there is no is_authenticated
@@ -80,9 +95,14 @@ class UserDetailView(LoginRequiredMixin, AuditedPermissionRequiredMixin, DetailV
         return User.objects.prefetch_related("groups")
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        from accounts import mfa_services
+
         context = super().get_context_data(**kwargs)
         subject: User = context["subject"]
         context["role_form"] = RoleAssignmentForm(initial={"roles": sorted(subject.role_names)})
+        # §21. Whether this account needs a second factor, whether it has one, and how many
+        # ways back it has left — the three things somebody looks at before deciding to reset.
+        context["mfa"] = mfa_services.status_for(subject)
         return context
 
 

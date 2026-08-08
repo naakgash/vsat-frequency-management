@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load utc_tags %}
 
 {% block title %}{{ subject.get_username }} &middot; Administration{% endblock %}
 
@@ -75,8 +76,49 @@
     </div>
   </div>
 
-  <div class="col-12">
-    <div class="card">
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h2 class="h6 card-title text-uppercase text-body-secondary">Second factor</h2>
+        {% if mfa.enrolled %}
+          <p class="card-text small mb-2">
+            Enrolled{% if mfa.confirmed_at %} {{ mfa.confirmed_at|utc }}{% endif %}.
+            {{ mfa.recovery_codes_left }} recovery code{{ mfa.recovery_codes_left|pluralize }}
+            remaining.
+          </p>
+          {% comment %}
+          The only way back for somebody who has lost both their authenticator and their
+          recovery codes. It is destructive — the account signs in with a password alone until
+          they enrol again — so it asks for a reason, and the event names both people (§18).
+          {% endcomment %}
+          <form method="post" action="{% url 'administration:user-reset-mfa' subject.pk %}">
+            {% csrf_token %}
+            <div class="mb-2">
+              <label class="form-label small" for="mfa-reason">Reason</label>
+              <input class="form-control form-control-sm" type="text" name="reason"
+                     id="mfa-reason" required
+                     placeholder="e.g. lost phone, confirmed by telephone">
+            </div>
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+              Remove their second factor
+            </button>
+          </form>
+        {% elif mfa.required %}
+          <p class="card-text small text-warning-emphasis mb-0">
+            <strong>Required and not yet enrolled.</strong> This account is asked to enrol on
+            every page it opens, and can reach nothing else until it does.
+          </p>
+        {% else %}
+          <p class="card-text small text-body-secondary mb-0">
+            Not required for this account's roles, and not enrolled.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
       <div class="card-body">
         <h2 class="h6 card-title text-uppercase text-body-secondary">Authorization scope</h2>
         <p class="card-text mb-0 text-body-secondary">

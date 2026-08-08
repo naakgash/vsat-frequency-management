@@ -251,3 +251,81 @@ class LoginAttempt(models.Model):
             successful=False,
             occurred_at__gte=timezone.now() - window,
         ).count()
+
+
+class MfaCredential(models.Model):
+    """One account's second factor. §21.
+
+    **Unconfirmed until proved.** ``confirmed_at`` stays null between generating a secret and
+    the person entering a code from it, and the sign-in flow treats an unconfirmed credential
+    as no credential at all. Without that, somebody who opened the enrolment page and closed it
+    would be locked out of their own account by a secret nobody ever scanned.
+
+    **``last_counter`` is the anti-replay record.** A TOTP code is valid for thirty seconds, so
+    a code read over a shoulder can be used again inside its own window. Storing the step that
+    was accepted and refusing anything at or below it closes that.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        "accounts.User", on_delete=models.CASCADE, related_name="mfa_credential"
+    )
+    #: The field name matters: ``audit.services`` redacts anything containing "secret", so this
+    #: value can never reach the trail (§18). See `accounts.mfa` for what a database dump
+    #: containing it means.
+    secret = models.CharField(max_length=64)
+
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    last_counter = models.BigIntegerField(null=True, blank=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "accounts_mfa_credential"
+        default_permissions = ()
+
+    def __str__(self) -> str:
+        state = "confirmed" if self.confirmed_at else "not confirmed"
+        return f"second factor for {self.user} ({state})"
+
+    @property
+    def is_confirmed(self) -> bool:
+        return self.confirmed_at is not None
+
+
+class MfaRecoveryCode(models.Model):
+    """One single-use way back in. §21.
+
+    Hashed with the project's password hasher, because a recovery code *is* a credential — it
+    signs somebody in on its own. Storing it readably would put the whole second factor back
+    into the database dump it exists to survive.
+
+    Used codes are kept rather than deleted: "this account was recovered on the 3rd" is
+    something an investigation needs, and a row that vanishes when it is spent takes that with
+    it.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        "accounts.User", on_delete=models.CASCADE, related_name="mfa_recovery_codes"
+    )
+    code_hash = models.CharField(max_length=256)
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "accounts_mfa_recovery_code"
+        ordering = ["created_at"]
+        default_permissions = ()
+        indexes = [
+            models.Index(
+                fields=["user"],
+                name="mfa_recovery_unused_idx",
+                condition=models.Q(used_at__isnull=True),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"recovery code for {self.user} ({'used' if self.used_at else 'unused'})"

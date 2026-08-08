@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Second factor{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-6 col-lg-4">
+    <h1 class="h4">One more step</h1>
+    <p class="text-body-secondary">
+      This account is protected by a second factor. Enter the six-digit code your authenticator
+      shows, or one of your recovery codes.
+    </p>
+
+    {% if error %}
+      <div class="alert alert-danger" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label" for="code">Code</label>
+        {% comment %}
+        `inputmode` and `autocomplete` matter here more than anywhere else in the product: this
+        is a phone-in-hand moment, and a numeric keypad and an offered code are the difference
+        between a two-second step and a fumbled one. `autofocus` for the same reason — the
+        cursor is already where the only thing to do is.
+        {% endcomment %}
+        <input class="form-control form-control-lg" type="text" name="code" id="code"
+               inputmode="numeric" autocomplete="one-time-code" autofocus required
+               aria-describedby="code-help">
+        <div class="form-text" id="code-help">
+          Six digits, or a recovery code such as ABCDE-FGHJK.
+        </div>
+      </div>
+      <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}">
+      <button type="submit" class="btn btn-primary w-100">Continue</button>
+    </form>
+
+    <p class="small text-body-secondary mt-3">
+      Lost both your authenticator and your recovery codes? Another administrator can remove
+      the second factor from your account, and you will be asked to enrol again.
+    </p>
+  </div>
+</div>
+{% endblock %}
