@@ -264,12 +264,20 @@ def create(
     satnet: Satnet,
     values: dict[str, Any],
     reason: str = "",
+    path_id: uuid.UUID | None = None,
+    revision_group: uuid.UUID | None = None,
 ) -> SatnetPath:
     """Create a Satnet Path and every reservation that holds its spectrum. §9.5, §15.6.
 
     Authorise, then re-check, then transact. The re-check is not a formality: the preview an
     operator accepted was computed against reservations that have since changed, and against
     master data that may have been superseded.
+
+    ``path_id`` and ``revision_group`` exist for the importer (§17.1) and for nothing else. A
+    Satnet Path exported and read back has to be *the same allocation*, not a copy of it, and
+    the identifier is the only thing that can say so — a re-import that minted new ones would
+    duplicate the plan every time somebody ran it. The wizard passes neither, so a typed
+    allocation still gets an identifier nobody chose.
     """
     policy.require(actor, MANAGE_SATNET_PATHS, satnet, reason=reason)
     allowed, why = satnet_scope.may_act_on(actor, beam_id=satnet.beam_id, hub_id=satnet.hub_id)
@@ -302,7 +310,15 @@ def create(
         )
         raise PathBlockedError(proposal.findings)
 
-    return _create(actor=actor, satnet=satnet, values=values, proposal=proposal, reason=reason)
+    return _create(
+        actor=actor,
+        satnet=satnet,
+        values=values,
+        proposal=proposal,
+        reason=reason,
+        path_id=path_id,
+        revision_group=revision_group,
+    )
 
 
 def create_revision(
@@ -517,6 +533,8 @@ def _create(
     proposal: Proposal,
     reason: str,
     predecessor: SatnetPath | None = None,
+    path_id: uuid.UUID | None = None,
+    revision_group: uuid.UUID | None = None,
 ) -> SatnetPath:
     canonical, translated = _sides_for(proposal.config, proposal.placement)
     status = values.get("status", PathStatus.DRAFT)
@@ -531,6 +549,13 @@ def _create(
         change_reason=reason,
         **_derived_fields(values, proposal, canonical, translated),
     )
+    if path_id is not None:
+        # An identifier supplied by the importer (§17.1). Setting the primary key before the
+        # first save is a *create* at this identifier, not an update of whatever holds it:
+        # `_create` is only ever reached for a row nothing was found for.
+        path.id = path_id
+    if revision_group is not None:
+        path.revision_group = revision_group
     if predecessor is not None:
         # §15.4. The group is constant across the chain so the history view is one indexed
         # query, and `ck_path_revision` refuses any later revision that supersedes nothing.

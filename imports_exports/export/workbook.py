@@ -38,6 +38,13 @@ HEADER_ALIGNMENT = Alignment(vertical="top", wrap_text=True)
 #: screens wide the first time somebody writes a long note.
 MAX_COLUMN_WIDTH = 60
 
+#: The two sheets every export carries besides its data. Named here because the importer has to
+#: skip them: reading the Data Dictionary as though it were allocations would fill a review
+#: screen with errors about a sheet that is doing exactly what it should.
+DATA_DICTIONARY_SHEET = "Data Dictionary"
+PROVENANCE_SHEET = "Export"
+AUXILIARY_SHEETS = (DATA_DICTIONARY_SHEET, PROVENANCE_SHEET)
+
 
 @dataclasses.dataclass(frozen=True)
 class Provenance:
@@ -87,7 +94,7 @@ def _writable(value: Any) -> Any:
     as a date, which is most of what somebody opens a spreadsheet to do.
 
     The zone does not go unstated: it moves to the **column heading**, which is what
-    `normalized._heading` appends "(UTC)" for. That keeps A-28's rule — a timestamp always says
+    `normalized.heading` appends "(UTC)" for. That keeps A-28's rule — a timestamp always says
     which zone it is in — while letting the cell stay a date.
 
     UUIDs become their canonical string, which is what lets an export come back through the S15
@@ -124,7 +131,7 @@ def add_data_dictionary(workbook: Workbook, codes: list[str]) -> Worksheet:
     """
     from specifications.models import SpecificationDefinition
 
-    sheet = workbook.create_sheet("Data Dictionary")
+    sheet = workbook.create_sheet(DATA_DICTIONARY_SHEET)
     headings = ["Code", "Name", "Unit", "Data type", "Description", "Calculation"]
     write_header(sheet, headings)
 
@@ -156,7 +163,7 @@ def add_provenance(workbook: Workbook, provenance: Provenance) -> Worksheet:
     Timestamps are UTC and say so (**A-28**): a workbook is read somewhere else, later, by
     somebody who was not there when it was produced.
     """
-    sheet = workbook.create_sheet("Export")
+    sheet = workbook.create_sheet(PROVENANCE_SHEET)
     headings = ["Field", "Value"]
     write_header(sheet, headings)
 

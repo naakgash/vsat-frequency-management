@@ -361,7 +361,7 @@ NULL/empty until engineering confirms it.
 | **OQ-15** | Expected user and history volumes | Indexing plan assumes ≤10⁵ Satnet Paths and ≤10⁷ audit rows; partitioning deferred |
 | **OQ-16** | Authentication: local or LDAP/AD | Custom `accounts.User` behind a pluggable auth backend; local-only in the MVP |
 | **OQ-17** | Intranet/VPN access policy | Deployment assumes on-premises with 443 exposed only |
-| **OQ-18** | Required fidelity of legacy-style Excel export | Normalized export first; legacy export slice sized after a sample workbook is supplied |
+| **OQ-18** | Required fidelity of legacy-style Excel export — **and, since S15, of a legacy-layout import**. Both halves of §17 now wait on the same artefact: without the real workbook the legacy export cannot be written and the legacy layout cannot be read. The normalized shape works end to end in both directions today (S14, S15) | Normalized export and import first; the legacy pair sized together once a sample workbook is supplied |
 | **OQ-19** | Official RPO/RTO/retention policy | Spec §22.4 temporary targets used until confirmed |
 | **OQ-20** | Availability of NMS integration APIs | Out of MVP scope; no integration surface built |
 | **OQ-21** | Required service/customer/platform metadata | Satnet carries the fields named in §13.9 only |

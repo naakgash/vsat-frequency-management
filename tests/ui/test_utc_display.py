@@ -140,8 +140,14 @@ def test_a_submitted_time_is_stored_as_the_utc_instant(client, world):
 
     A ``datetime-local`` field submits a wall-clock string with no zone. What the platform does
     with it is the whole question, and the answer is: reads it as UTC and stores that instant.
+
+    The moment is derived from the clock rather than written out. A fixed date was the original
+    and it expired: the Satnet in this fixture is effective from yesterday, so a hard-coded
+    timestamp becomes uncontainable (ADR-0020) the moment the calendar passes it, and the test
+    then fails for a reason that has nothing to do with time zones.
     """
     client.force_login(world["admin"])
+    moment = (timezone.now() + timezone.timedelta(days=1)).replace(second=0, microsecond=0)
 
     client.post(
         reverse("satnet_paths:create", kwargs={"satnet_pk": world["satnet"].pk}),
@@ -153,14 +159,15 @@ def test_a_submitted_time_is_stored_as_the_utc_instant(client, world):
             "input_value": 10 * MHZ,
             "rolloff": "0.2",
             "canonical_center_hz": 50 * MHZ,
-            "valid_from": "2026-08-05T12:00",
+            # No offset, no zone name — exactly what the browser widget submits.
+            "valid_from": moment.strftime("%Y-%m-%dT%H:%M"),
             "gateway": "",
             "decimator_assignment": "",
         },
     )
 
     path = SatnetPath.objects.get()
-    assert path.valid_from == datetime.datetime(2026, 8, 5, 12, 0, tzinfo=datetime.UTC)
+    assert path.valid_from == moment.astimezone(datetime.UTC)
 
 
 @pytest.mark.django_db

@@ -48,7 +48,7 @@ def build(
 
     book = writer.new_workbook()
     sheet = book.create_sheet(SHEET_NAME)
-    headings = [*IDENTITY_COLUMNS, *(_heading(column) for column in chosen)]
+    headings = [*IDENTITY_COLUMNS, *(heading(column) for column in chosen)]
     writer.write_header(sheet, headings)
 
     for index, path in enumerate(rows, start=2):
@@ -78,7 +78,7 @@ def build(
     return writer.to_bytes(book), len(rows)
 
 
-def _heading(column: column_registry.Column) -> str:
+def heading(column: column_registry.Column) -> str:
     """What the column is called in the file.
 
     The **code**, not the display name, for a specification column: §10.3 uses the code as the

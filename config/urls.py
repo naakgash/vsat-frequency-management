@@ -33,6 +33,7 @@ urlpatterns = [
     # dependency.
     path("", include("approvals.urls")),
     path("exports/", include("imports_exports.urls")),
+    path("imports/", include("imports_exports.import_urls")),
     path("engineering/", include("calculations.urls")),
 ]
 

@@ -78,6 +78,11 @@ MANAGE_SAVED_VIEWS = "reporting.add_savedview"
 #: §17.2. Every role exports, and scope narrows what comes out — an Observer exporting
 #: "all Satnet Paths" receives the same queryset the screen would have shown them.
 EXPORT_DATA = "imports_exports.export_data"
+#: §17.1, and administrator only. Separate capabilities because they are separate decisions:
+#: reading what a file would do changes nothing, and writing what it says creates allocations
+#: under other people's Satnets.
+RUN_IMPORT_DRYRUN = "imports_exports.run_import_dryrun"
+COMMIT_IMPORT = "imports_exports.commit_import"
 
 #: Read access to inventory is uniform across the five entities.
 _ALL_ROLES = (Role.ADMIN, Role.OPERATOR, Role.APPROVER, Role.OBSERVER)
@@ -143,4 +148,10 @@ CAPABILITY_MATRIX: dict[str, tuple[str, ...]] = {
     VIEW_APPROVALS: _ALL_ROLES,
     MANAGE_SAVED_VIEWS: _ALL_ROLES,
     EXPORT_DATA: _ALL_ROLES,
+    # §17.1. `docs/design/03` §2.1 gives both to the administrator and to nobody else. An
+    # import writes allocations across every Beam and Hub in one action, which is the widest
+    # single write in the product — and object scope cannot narrow it, because the file
+    # chooses what it touches.
+    RUN_IMPORT_DRYRUN: (Role.ADMIN,),
+    COMMIT_IMPORT: (Role.ADMIN,),
 }

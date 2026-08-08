@@ -141,6 +141,20 @@ COLUMNS: tuple[Column, ...] = (
         order_by="updated_at",
     ),
     # --- What was asked for -------------------------------------------------
+    #: §9.2's pair, and the only two values in the record that are not recoverable by
+    #: recalculation: everything else a Satnet Path holds is derived from these, so an export
+    #: without them cannot be imported back into an equivalent allocation. They carry plain
+    #: labels because the Specification Dictionary has no entry for "which of the two the
+    #: operator typed" — that is a platform concept, not an RF one.
+    Column("input_mode", "request", "input_mode", label="Input mode", order_by="input_mode"),
+    Column(
+        "input_value",
+        "request",
+        "input_value",
+        label="Input value",
+        render="number",
+        order_by="input_value",
+    ),
     Column(
         "symbol_rate",
         "request",

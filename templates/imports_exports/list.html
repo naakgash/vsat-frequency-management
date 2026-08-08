@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load utc_tags %}
+{% block title %}Imports{% endblock %}
+{% block content %}
+<h1 class="h3">Imports</h1>
+<p class="text-body-secondary">
+  An import happens in two stages. The first reads the file and tells you what it would do,
+  without touching anything. The second writes it, after checking that the file is still the one
+  you read.
+</p>
+
+<div class="card mb-4"><div class="card-body">
+  <h2 class="h5">Read a file</h2>
+  <form method="post" action="{% url 'imports:dry-run' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-lg-5">
+        <label class="form-label" for="import-file">Workbook</label>
+        <input class="form-control" type="file" name="file" id="import-file" accept=".xlsx" required
+               aria-describedby="import-file-help">
+        <div class="form-text" id="import-file-help">
+          An .xlsx file, up to {{ max_bytes }} bytes. Macro-enabled workbooks are not accepted.
+        </div>
+      </div>
+      <div class="col-12 col-lg-3">
+        <label class="form-label" for="batch-policy">If a row cannot be written</label>
+        <select class="form-select" name="batch_policy" id="batch-policy" aria-describedby="policy-help">
+          {% for value, label in policies %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+        <div class="form-text" id="policy-help">
+          All or nothing stops the whole batch. Row by row keeps what worked.
+        </div>
+      </div>
+      <div class="col-12 col-lg-3">
+        <label class="form-label" for="import-reason">Reason</label>
+        <input class="form-control" type="text" name="reason" id="import-reason"
+               placeholder="Why this import is being run">
+      </div>
+      <div class="col-12 col-lg-1">
+        <button type="submit" class="btn btn-primary w-100">Read</button>
+      </div>
+    </div>
+  </form>
+</div></div>
+
+<details class="mb-4">
+  <summary>What the file has to contain</summary>
+  <div class="pt-2">
+    <p class="small text-body-secondary">
+      An export from this platform is the shape an import reads. These columns are what it takes
+      from a row; every other value — bandwidths, guards, band edges, IF — is calculated here and
+      never taken from the spreadsheet, whatever the file says.
+    </p>
+    <ul class="small">
+      {% for heading in expected_columns %}<li><code>{{ heading }}</code></li>{% endfor %}
+    </ul>
+    <p class="small text-body-secondary mb-1">Deliberately not imported:</p>
+    <ul class="small">
+      {% for field, why in not_imported %}<li><code>{{ field }}</code> — {{ why }}</li>{% endfor %}
+    </ul>
+  </div>
+</details>
+
+<h2 class="h5">Batches</h2>
+{% if batches %}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <caption class="visually-hidden">Import batches, most recent first</caption>
+      <thead>
+        <tr>
+          <th scope="col">File</th>
+          <th scope="col">Stage</th>
+          <th scope="col">Policy</th>
+          <th scope="col" class="text-end">Rows</th>
+          <th scope="col">Read by</th>
+          <th scope="col">Read at</th>
+          <th scope="col">Outcome</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for batch in batches %}
+          <tr>
+            <th scope="row" class="fw-normal">
+              <a href="{{ batch.get_absolute_url }}">{{ batch.file_name }}</a>
+            </th>
+            <td>
+              <span class="badge text-bg-{% if batch.is_committed %}success{% elif batch.stage == 'FAILED' %}danger{% else %}secondary{% endif %}">
+                {{ batch.get_stage_display }}
+              </span>
+            </td>
+            <td class="small">{{ batch.get_batch_policy_display }}</td>
+            <td class="text-end">{{ batch.row_count }}</td>
+            <td class="small">{{ batch.uploaded_by|default:"—" }}</td>
+            <td class="small">{{ batch.uploaded_at|utc }}</td>
+            <td class="small">{{ batch.message }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="text-body-secondary">No file has been read yet.</p>
+{% endif %}
+{% endblock %}

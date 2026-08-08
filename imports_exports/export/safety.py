@@ -16,6 +16,11 @@ about itself.
 **Numbers never come through here.** A frequency, a bandwidth and a count are written as numeric
 cells, so ``-5`` stays ``-5``. Only strings are inspected, which is why a negative number is not
 mangled into text.
+
+:func:`restore` is the inverse, and it lives in this module rather than with the importer that
+calls it. An inverse kept somewhere else drifts: the day a character is added to
+:data:`FORMULA_STARTS`, every export starts guarding a value the importer no longer unguards,
+and the round trip breaks in a way that only shows up on the codes nobody tests with.
 """
 
 from __future__ import annotations
@@ -43,6 +48,24 @@ def neutralise(value: Any) -> Any:
         return value
     if value.startswith(FORMULA_STARTS):
         return f"{GUARD}{value}"
+    return value
+
+
+def restore(value: Any) -> Any:
+    """Undo :func:`neutralise`. The inverse, and it lives here so it cannot drift from it.
+
+    An export written by this platform and read back by its importer has to arrive at the value
+    it started with, or a Satnet Path code that needed guarding would gain an apostrophe on
+    every round trip and stop matching the record it came from.
+
+    The apostrophe is removed **only** where `neutralise` would have added one — in front of a
+    formula character. A value that genuinely begins with an apostrophe and continues with an
+    ordinary letter is left exactly as it is, so the inverse is not a guess.
+    """
+    if not isinstance(value, str):
+        return value
+    if value.startswith(GUARD) and value[len(GUARD) :].startswith(FORMULA_STARTS):
+        return value[len(GUARD) :]
     return value
 
 
