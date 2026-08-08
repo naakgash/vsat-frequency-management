@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% load utc_tags %}
+{% block title %}{{ batch.file_name }}{% endblock %}
+{% block content %}
+<nav aria-label="Breadcrumb">
+  <ol class="breadcrumb small">
+    <li class="breadcrumb-item"><a href="{% url 'imports:list' %}">Imports</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ batch.file_name }}</li>
+  </ol>
+</nav>
+
+<h1 class="h3">{{ batch.file_name }}</h1>
+<p class="text-body-secondary">
+  Read by {{ batch.uploaded_by|default:"—" }} at {{ batch.uploaded_at|utc }}.
+  {{ batch.get_batch_policy_display }}.
+  {% if batch.is_committed %}
+    Committed by {{ batch.committed_by|default:"—" }} at {{ batch.committed_at|utc }}.
+  {% endif %}
+</p>
+<p class="small text-body-secondary">
+  SHA-256 <code>{{ batch.file_sha256 }}</code> — a commit refuses any file that does not hash to
+  this.
+</p>
+
+<div class="row g-2 mb-4">
+  {% for count in summary %}
+    <div class="col-6 col-md-3 col-xl">
+      <a class="text-decoration-none"
+         href="?only={{ count.classification }}"
+         aria-label="Show only {{ count.label }} rows">
+        <div class="card h-100 {% if count.total and count.blocking %}border-danger{% elif count.total and count.committable %}border-success{% endif %}">
+          <div class="card-body py-2">
+            <p class="h4 mb-0">{{ count.total }}</p>
+            <p class="small text-body-secondary mb-0">{{ count.label }}</p>
+          </div>
+        </div>
+      </a>
+    </div>
+  {% endfor %}
+</div>
+{% if only %}
+  <p><a href="{{ batch.get_absolute_url }}">Show every row</a></p>
+{% endif %}
+
+{% if unresolved %}
+  <div class="card border-warning mb-4"><div class="card-body">
+    <h2 class="h5">Labels this file uses that the platform does not recognise</h2>
+    <p class="small text-body-secondary">
+      Say what each one means and no future import will ask again. Nothing is guessed at: a
+      near-match resolved on its own would attach a transmission to the wrong Satnet.
+    </p>
+    {% for entry in unresolved %}
+      <form method="post" action="{% url 'imports:remember-mapping' batch.pk %}"
+            class="row g-2 align-items-end mb-2">
+        {% csrf_token %}
+        <input type="hidden" name="kind" value="{{ entry.kind }}">
+        <input type="hidden" name="label" value="{{ entry.label }}">
+        <div class="col-12 col-md-4">
+          <label class="form-label small" for="t-{{ forloop.counter }}">
+            {{ entry.kind }} “{{ entry.label }}” means
+          </label>
+          <select class="form-select form-select-sm" name="target_id" id="t-{{ forloop.counter }}" required>
+            <option value="">Choose…</option>
+            {% if entry.kind == 'satnet' %}
+              {% for satnet in satnets %}<option value="{{ satnet.pk }}">{{ satnet }}</option>{% endfor %}
+            {% else %}
+              {% for gateway in gateways %}<option value="{{ gateway.pk }}">{{ gateway }}</option>{% endfor %}
+            {% endif %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-sm btn-outline-primary">Remember</button>
+        </div>
+      </form>
+    {% endfor %}
+  </div></div>
+{% endif %}
+
+{% if not batch.is_committed %}
+  <div class="card mb-4"><div class="card-body">
+    <h2 class="h5">Commit</h2>
+    <p class="small text-body-secondary">
+      Attach the same file again. The commit checks its SHA-256 against the one above, so a
+      spreadsheet edited since it was read is refused rather than written — and what is written
+      comes from the rows below, not from a second reading of the file.
+    </p>
+    <form method="post" action="{% url 'imports:commit' batch.pk %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-lg-5">
+          <label class="form-label" for="commit-file">The same workbook</label>
+          <input class="form-control" type="file" name="file" id="commit-file" accept=".xlsx" required>
+        </div>
+        <div class="col-12 col-lg-4">
+          <label class="form-label" for="commit-reason">Reason</label>
+          <input class="form-control" type="text" name="reason" id="commit-reason">
+        </div>
+        <div class="col-12 col-lg-3">
+          <button type="submit" class="btn btn-primary w-100">
+            Commit {{ batch.committable_count }} row{{ batch.committable_count|pluralize }}
+          </button>
+        </div>
+      </div>
+    </form>
+    <p class="small text-body-secondary mt-2 mb-0">
+      Every imported allocation is created as a draft. An import is bulk data entry, not an
+      approval — including where the file carries an overlap, which is reported and holds no
+      spectrum until somebody decides what to do about it.
+    </p>
+  </div></div>
+{% endif %}
+
+<h2 class="h5">Rows</h2>
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <caption class="visually-hidden">Every row this file contained and what it was judged to be</caption>
+    <thead>
+      <tr>
+        <th scope="col">Row</th>
+        <th scope="col">Classification</th>
+        <th scope="col">Satnet Path</th>
+        <th scope="col">Satnet</th>
+        <th scope="col">What was said about it</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <th scope="row" class="fw-normal small">{{ row.sheet }}!{{ row.row_number }}</th>
+          <td>
+            <span class="badge text-bg-{% if row.classification == 'VALID' %}success{% elif row.classification == 'WARNING' %}warning{% elif row.classification == 'IGNORED_FREE_CAPACITY' %}secondary{% else %}danger{% endif %}">
+              {{ row.get_classification_display }}
+            </span>
+          </td>
+          <td class="small">{{ row.normalized.code|default:"—" }}</td>
+          <td class="small">{{ row.normalized.satnet|default:"—" }}</td>
+          <td class="small">
+            {% for message in row.messages %}
+              <div><span class="text-body-secondary">{{ message.code }}</span> {{ message.text }}</div>
+            {% empty %}—{% endfor %}
+            {% if row.resulting_object_id %}
+              <div class="text-body-secondary">Satnet Path {{ row.resulting_object_id }}</div>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="text-body-secondary">No rows match.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

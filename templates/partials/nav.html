@@ -70,7 +70,19 @@ Each becomes a real link in the slice named in its title attribute.
           <a class="nav-link{% if request.resolver_match.app_name == 'calculations' %} active{% endif %}"
              href="{% url 'calculations:preview' %}">Engineering Preview</a>
         </li>
-        <li class="nav-item"><span class="nav-link disabled" title="Delivered in slices S14 and S15">Imports &amp; Exports</span></li>
+        {% comment %}
+        The export is a button on the Satnet Path table rather than an entry here — it exports
+        what you are looking at, so a page of its own would be a step in the way. This entry is
+        the import, which is administrator-only (§17.1) and is a place rather than an action.
+        {% endcomment %}
+        {% if perms.imports_exports.run_import_dryrun %}
+          <li class="nav-item">
+            <a class="nav-link{% if request.resolver_match.app_name == 'imports' %} active{% endif %}"
+               href="{% url 'imports:list' %}">Imports</a>
+          </li>
+        {% else %}
+          <li class="nav-item"><span class="nav-link disabled" title="Administrators import; every role exports from the Satnet Path table">Imports</span></li>
+        {% endif %}
         <li class="nav-item"><span class="nav-link disabled" title="Delivered in slice S16">Audit</span></li>
         {% comment %}
         Hiding this link is presentation only. The views themselves enforce the

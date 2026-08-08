@@ -6,17 +6,18 @@ Replaces spreadsheet-based frequency planning with a controlled multi-user appli
 the hierarchy `Satellite → Beam → Satnet → Satnet Path`, with derived engineering values, guided
 operator workflows, and overlap prevention enforced at the UI, service and PostgreSQL layers.
 
-**Status:** Slices **S1–S8** delivered. Application foundation, PostgreSQL 16 with the required
-extensions, health endpoints, the English interface shell, CI guard rails, authentication with four
-roles behind a single backend authorization choke point, an append-only audit trail, the
-admin-managed Specification Dictionary with its accessible information popover, the independent
-inventory entities with object-level scope, and dependent inventory — Frequency Windows and Payload
-Paths as effective-dated master data that is superseded rather than overwritten, and the pure
-calculation engine — bandwidth, edges, guards, payload translation, RF/IF conversion and equipment
-matching — with an Engineering Preview screen that exercises it end to end, and the Beam Builder:
-the root spectrum pool, its two direction chains, and an activation that is refused while an enabled
-direction is invalid. Reservations and the exclusion constraints begin at S9, which is **gated on
-OQ-25, OQ-26 and OQ-27**; see the [slice plan](docs/design/05-vertical-slice-plan.md).
+**Status:** Slices **S1–S15** delivered, plus the lettered schema slices S0, S9a, S10a and S11a.
+The application foundation, PostgreSQL 16 with the required extensions, health endpoints, the
+English interface shell and CI guard rails; authentication with four roles behind a single backend
+authorization choke point and an append-only audit trail; the admin-managed Specification
+Dictionary; independent and dependent inventory as effective-dated master data that is superseded
+rather than overwritten; the pure calculation engine — bandwidth, edges, guards, payload
+translation, RF/IF conversion and equipment matching; the Beam Builder and its spectrum
+assignments; **reservations and the PostgreSQL exclusion constraint that is the last line of
+defence against an overlap**; Satnets, the guided Satnet Path wizard, the §15.2 lifecycle with
+approvals and on-air revisions; the table, saved views and dashboard; and both halves of §17 in the
+platform's own shape — the normalized export and the two-stage import. See the
+[slice plan](docs/design/05-vertical-slice-plan.md) for what remains.
 
 The inventory ships **empty** — no satellite, band, window, translation, polarization mapping or
 guard value. Every value it would hold is an unresolved RF engineering question, and a
@@ -96,6 +97,7 @@ exist in SQLite, so a green SQLite suite would prove nothing about the behaviour
 | S12 — Lifecycle, approvals and revisions | [docs/slices/12-lifecycle-approvals-revisions.md](docs/slices/12-lifecycle-approvals-revisions.md) | §26.14 met; §26.17 advanced; OQ-08 and OQ-11 implemented as settings |
 | S13 — Table, saved views and dashboard | [docs/slices/13-table-saved-views-dashboard.md](docs/slices/13-table-saved-views-dashboard.md) | §26.11 met; §26.2/§26.3 advanced; table headings come from the Specification Dictionary |
 | S14 — Export | [docs/slices/14-export.md](docs/slices/14-export.md) | §26.19 met for the normalized export; §26.17 advanced; §21.12 enforced at one choke point; legacy layout gated on OQ-18 |
+| S15 — Import: dry-run and commit | [docs/slices/15-import-dry-run-and-commit.md](docs/slices/15-import-dry-run-and-commit.md) | §26.19 met for the import; §26.16 held from a new angle; SHA-256 verified between the two stages; free-capacity rows ignored, never imported |
 
 Slices are listed in the order they were delivered, which is not always numerical: S0 was
 written once there was a schema to generate intake sheets from, and the lettered slices are
@@ -117,6 +119,7 @@ schema changes that arrived with an answer.
 - [ADR-0009 — Free capacity is calculated, never stored](docs/adr/0009-calculated-free-capacity.md)
 - [ADR-0013 — Append-only audit, enforced by the database](docs/adr/0013-append-only-audit.md)
 - [ADR-0014 — An on-air allocation is closed and replaced, never overwritten](docs/adr/0014-on-air-revisions.md)
+- [ADR-0015 — An import is read twice and calculated once](docs/adr/0015-import-dry-run.md)
 - [ADR-0016 — Guard policies resolve through a fixed hierarchy](docs/adr/0016-guard-policy-hierarchy.md)
 - [ADR-0017 — What a suspended reservation holds](docs/adr/0017-suspended-reservation-policy.md)
 - [ADR-0018 — Overlap is judged on a Spectrum Resource](docs/adr/0018-spectrum-resource-reuse-key.md)
@@ -131,6 +134,11 @@ The three questions that could change the database schema — **OQ-25**, **OQ-26
 were answered on 2026-08-04 and are implemented (S9a, S10a). **OQ-09**, **OQ-10**, **OQ-23** and
 **OQ-32** followed. The full register, with what each answer changed, is in
 [docs/design/00](docs/design/00-assumptions-and-open-questions.md).
+
+**OQ-18 now blocks both halves of §17.** The incumbent workbook is needed twice over: without a
+real sample the legacy-style export cannot be written (S14) and the legacy layout cannot be read
+(S15). Neither is guessed at — the normalized shape works end to end in both directions, and the
+legacy pair will be sized together once a sample arrives.
 
 **OQ-22 is the one gap that cannot be closed by building.** Section 24 asks for a worked example
 from a currently operational Satnet Path, calculated independently by an RF engineer — anything
