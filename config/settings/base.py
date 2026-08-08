@@ -55,6 +55,9 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # After authentication so the actor is known, before anything that may audit.
     "audit.middleware.RequestContextMiddleware",
+    # After authentication, because it asks who the user is; before the message middleware
+    # so a redirect it issues still carries any queued message (section 21).
+    "accounts.middleware.RequireMfaMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -221,23 +224,62 @@ REQUIRE_SEPARATE_APPROVER = env.optional("REQUIRE_SEPARATE_APPROVER", "true").lo
 LOGGING: dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,
+    # Every line carries the request id, which is the same value `audit_event.request_id`
+    # holds (section 21.14). An incident starts in the log and ends in the audit trail, and
+    # this is what joins the two — correlating a busy minute by timestamp is how an
+    # investigation reaches the wrong conclusion.
+    "filters": {
+        "request_id": {"()": "audit.context.RequestIdFilter"},
+    },
     "formatters": {
         "verbose": {
-            "format": "%(asctime)s %(levelname)s %(name)s %(process)d %(message)s",
+            "format": "%(asctime)s %(levelname)s %(name)s %(process)d [%(request_id)s] %(message)s",
         },
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
+            "filters": ["request_id"],
         },
     },
     "root": {"handlers": ["console"], "level": env.optional("DJANGO_LOG_LEVEL", "INFO")},
     "loggers": {
+        # Denied permissions, lockouts and rejected sign-ins. Kept at INFO regardless of the
+        # root level, because turning logging down must never turn the security trail off.
         "django.security": {
             "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },
+        # 4xx and 5xx, with the traceback. It goes to the log and never to the visitor —
+        # section 21.15, and `operations.views` renders the safe error pages that make that
+        # true.
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        # Backups, restore drills and the smoke check. Named so an operator can raise just
+        # this one to DEBUG during a release without turning the whole application up.
+        "operations": {
+            "handlers": ["console"],
+            "level": env.optional("VSAT_OPERATIONS_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
     },
 }
+
+# ---------------------------------------------------------------------------
+# Second factor (section 21)
+# ---------------------------------------------------------------------------
+# Which accounts must carry one. Administrators by default, because an administrator owns
+# the inventory, the Beam engineering, users, scopes and imports — an attacker holding one
+# password can rewrite the frequency plan and grant themselves the scope to do it again.
+#
+# A setting rather than a hard-coded group name: a deployment that decides an Approver needs
+# one too should not need a code change to say so, and "turn it on for everybody" is exactly
+# the decision that gets made after an incident.
+MFA_REQUIRED_ROLES: tuple[str, ...] = ("admin",)
+MFA_REQUIRED_FOR_ALL = env.boolean("VSAT_MFA_REQUIRED_FOR_ALL", False)
+MFA_ISSUER = env.optional("VSAT_MFA_ISSUER", "VSAT Spectrum Allocation")

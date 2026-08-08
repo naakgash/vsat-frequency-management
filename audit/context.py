@@ -17,6 +17,7 @@ import dataclasses
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Any
 
 
 @dataclasses.dataclass(frozen=True)
@@ -38,6 +39,28 @@ _current: contextvars.ContextVar[RequestContext] = contextvars.ContextVar(
 def current() -> RequestContext:
     """Return the request context in scope, or an empty one outside a request."""
     return _current.get()
+
+
+class RequestIdFilter:
+    """A logging filter that stamps the request id onto every log record. §21.14.
+
+    Not decoration. An incident starts with a log line and ends in the audit trail, and the
+    request id is the only thing that joins the two: `audit_event.request_id` holds the same
+    value, so a stack trace in the log leads directly to the events that request produced —
+    and to none of the thousands it did not. Correlating by timestamp alone is how an
+    investigation of a busy minute goes wrong.
+
+    A class rather than a function because ``logging.config.dictConfig`` instantiates filters
+    from a ``()`` key, and outside a request the id is simply ``-``, which is correct: a
+    management command has no request (see the module note).
+    """
+
+    def filter(self, record: Any) -> bool:
+        record.request_id = str(current().request_id or "-")
+        # Always True: this filter adds a field, it never suppresses a line. A logging filter
+        # that could drop records is a logging filter that will one day drop the one that
+        # mattered.
+        return True
 
 
 @contextmanager

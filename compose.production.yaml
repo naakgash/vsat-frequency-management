@@ -1,0 +1,124 @@
+# Production stack. §21, §22.1, §22.2.
+#
+# Three differences from `compose.yaml`, and each is a requirement rather than a preference:
+#
+#  1. **nginx is the only thing with a published port**, and it publishes 443 and 80 — the
+#     latter only to redirect. Gunicorn is reachable on the internal network and nowhere else.
+#  2. **PostgreSQL publishes nothing.** §22.2 requires it to be unreachable from outside the
+#     compose network; the development file publishes 5432 on the loopback for psql, and that
+#     line is absent here rather than commented out, so it cannot be restored by deleting a `#`.
+#  3. **The image is built from a tagged release**, not from the working tree, and no source is
+#     bind-mounted. What runs is what was built and scanned.
+#
+# TLS certificates and the backup directory are mounted from the host. Neither is ever baked
+# into an image and neither is ever committed.
+#
+#   docker compose -f compose.production.yaml up -d
+#
+# See docs/runbooks/deploy.md for the release flow this file is half of.
+
+name: vsat-spectrum-production
+
+services:
+  db:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Where `manage.py backup_database` writes. On the host so a dump survives the
+      # container, and on a different filesystem from postgres_data if the host allows it —
+      # a backup on the disk that just failed is not a backup (docs/runbooks/backup.md).
+      - ${VSAT_BACKUP_DIR:-/var/backups/vsat}:/backups
+    # No `ports:`. Deliberately, and §22.2 is the reason. The only way to reach this database
+    # from the host is `docker compose exec db psql`, which requires access to the host.
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  web:
+    image: ${VSAT_IMAGE:?set VSAT_IMAGE to the tagged release being deployed}
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?set DJANGO_ALLOWED_HOSTS}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:?set DJANGO_CSRF_TRUSTED_ORIGINS}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      BACKUP_DIRECTORY: /backups
+      # The entrypoint runs `check --deploy --fail-level WARNING`, so a misconfigured
+      # deployment refuses to serve rather than serving insecurely.
+    volumes:
+      - static_files:/app/staticfiles
+      - ${VSAT_BACKUP_DIR:-/var/backups/vsat}:/backups
+    # Also no `ports:`. nginx reaches it over the internal network.
+    networks:
+      - internal
+    depends_on:
+      db:
+        condition: service_healthy
+    # Migrations are NOT run here (docker/entrypoint.sh, §22.3): applying a schema change the
+    # moment a container restarts is a schema change nobody reviewed and nobody backed up for.
+    command:
+      - gunicorn
+      - config.wsgi:application
+      - --bind=0.0.0.0:8000
+      - --workers=${GUNICORN_WORKERS:-4}
+      # Longer than nginx's proxy_read_timeout would allow anyway; an export of a large
+      # filtered set is the slowest legitimate request in the product.
+      - --timeout=120
+      - --access-logfile=-
+      - --error-logfile=-
+      # Recycled to bound the effect of any slow leak, with jitter so the workers do not all
+      # restart in the same second and drop a burst of requests together.
+      - --max-requests=1000
+      - --max-requests-jitter=100
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live')\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/vsat.conf:/etc/nginx/templates/vsat.conf.template:ro
+      - ${VSAT_TLS_DIR:?set VSAT_TLS_DIR to the directory holding fullchain.pem and privkey.pem}:/etc/nginx/tls:ro
+      - static_files:/app/staticfiles:ro
+    environment:
+      VSAT_SERVER_NAME: ${VSAT_SERVER_NAME:?set VSAT_SERVER_NAME}
+    networks:
+      - internal
+      - public
+    depends_on:
+      web:
+        condition: service_healthy
+
+networks:
+  # Everything the application needs to talk to lives here, and nothing here is published.
+  internal:
+    internal: true
+  # Only nginx is on this one, which is what makes 443 the only way in (§22.2).
+  public:
+
+volumes:
+  postgres_data:
+  static_files:

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Recovery codes{% endblock %}
+{% block content %}
+<h1 class="h3">Recovery codes</h1>
+
+<div class="alert alert-warning" role="alert">
+  <strong>This page is shown once.</strong> The codes are stored hashed, exactly like a
+  password, so nothing on this system can show them to you again. Print them or put them
+  somewhere you would keep a key.
+</div>
+
+<p class="text-body-secondary">
+  Each one signs you in once, without your authenticator, and is then spent. They exist for the
+  day the phone is lost — without them, getting back in needs another administrator.
+</p>
+
+<ul class="list-group mb-4" style="max-width: 22rem;">
+  {% for code in codes %}
+    <li class="list-group-item font-monospace">{{ code }}</li>
+  {% endfor %}
+</ul>
+
+{% if just_enrolled %}
+  <p>
+    Your second factor is now on. You will be asked for a code the next time you sign in.
+  </p>
+{% endif %}
+
+<a class="btn btn-primary" href="{% url 'home' %}">I have saved them</a>
+{% endblock %}

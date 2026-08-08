@@ -40,11 +40,14 @@ jobs:
       - name: Ruff format check
         run: uv run ruff format --check .
 
+      # Through the Makefile, with the tool overridden, so the list of modules lives in one
+      # place. It lived in two until S17 and had drifted: three modules were type-checked
+      # locally and not here, which is the wrong way round for a gate.
       - name: Type check
-        run: uv run mypy config operations audit accounts specifications inventory beams calculations spectrum satnets satnet_paths
+        run: make types MYPY="uv run mypy"
 
       - name: Module dependency direction
-        run: uv run lint-imports
+        run: make imports LINT_IMPORTS="uv run lint-imports"
 
   test:
     name: Tests (PostgreSQL 16)
@@ -84,6 +87,12 @@ jobs:
 
       - name: Verify migrations are complete and consistent
         run: uv run python manage.py makemigrations --check --dry-run
+
+      # The release smoke check, run against the CI database. It is what the deploy runbook
+      # runs after a rollout (§22.3), so running it here means a release never meets it for
+      # the first time in production.
+      - name: Release smoke check
+        run: uv run python manage.py smoke
         env:
           DJANGO_SETTINGS_MODULE: config.settings.test
 

@@ -7,6 +7,19 @@ RUFF   := .venv/bin/ruff
 MYPY   := .venv/bin/mypy
 LINT_IMPORTS := .venv/bin/lint-imports
 
+# Every application module, in dependency order. Named explicitly rather than passing '.':
+# that would pull in the test suite, whose looser rules produce enough noise to hide a real
+# error in the application itself.
+#
+# **One list, and CI uses this one.** It lived in two places until S17 and had drifted —
+# `approvals`, `reporting` and `imports_exports` were type-checked locally and not in CI, so
+# three modules were unchecked on the branch that mattered. The workflow now calls these
+# targets with the tools overridden, which is why the variables above exist.
+TYPED_MODULES := config operations audit accounts specifications inventory beams calculations \
+                 spectrum satnets satnet_paths approvals reporting imports_exports
+
+INTO ?= vsat_restore_drill
+
 BOOTSTRAP_VERSION := 5.3.3
 HTMX_VERSION      := 2.0.4
 
@@ -80,10 +93,7 @@ format:  ## Apply Ruff formatting
 
 .PHONY: types
 types:  ## Type check
-	# Every application module, in dependency order. Named explicitly rather than
-	# passing '.': that would pull in the test suite, whose looser rules produce
-	# enough noise to hide a real error in the application itself.
-	$(MYPY) config operations audit accounts specifications inventory beams calculations spectrum satnets satnet_paths approvals reporting imports_exports
+	$(MYPY) $(TYPED_MODULES)
 
 .PHONY: imports
 imports:  ## Enforce the module dependency direction of docs/design/01
@@ -103,6 +113,23 @@ test:  ## Run the test suite against real PostgreSQL
 .PHONY: test-db
 test-db:  ## Run only the database constraint tests
 	$(PYTEST) tests/db -v
+
+# ---------------------------------------------------------------------------
+# Operations — backup, restore verification and the release smoke check (section 22)
+# ---------------------------------------------------------------------------
+.PHONY: backup
+backup:  ## Dump the database and write a manifest beside it (section 22.4)
+	$(PYTHON) manage.py backup_database
+
+.PHONY: verify-restore
+verify-restore:  ## Restore DUMP into a scratch database and verify it (section 22.4)
+	# A backup nobody has restored is a file, not a backup. docs/runbooks/restore.md.
+	@test -n "$(DUMP)" || { echo "Usage: make verify-restore DUMP=/var/backups/vsat/xxx.dump"; exit 2; }
+	$(PYTHON) manage.py verify_restore --dump $(DUMP) --into $(INTO)
+
+.PHONY: smoke
+smoke:  ## Verify a deployment is serving (section 22.3)
+	$(PYTHON) manage.py smoke
 
 # ---------------------------------------------------------------------------
 # Vendored front-end assets (specification section 19.4 — no CDN dependency)

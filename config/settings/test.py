@@ -34,3 +34,19 @@ CSRF_COOKIE_SECURE = False
 # Keep test output readable; the logging configuration itself is exercised by its own
 # tests rather than by every unrelated test emitting records.
 LOGGING["root"]["level"] = "CRITICAL"
+
+# ---------------------------------------------------------------------------
+# Second factor (section 21)
+# ---------------------------------------------------------------------------
+# **Off by default here, and on in production.** Almost every test in this suite signs in as
+# an administrator to exercise something that has nothing to do with authentication, and the
+# middleware correctly refuses an un-enrolled administrator every page — so leaving this on
+# would mean enrolling a second factor before testing a frequency calculation.
+#
+# The cost is that the production value is not exercised by the bulk of the suite, so it is
+# exercised deliberately instead: tests/accounts/test_mfa.py turns it back on with
+# `override_settings` and asserts the whole flow, and one test there asserts that
+# `config.settings.base` still requires it for administrators — so switching it off *here*
+# can never quietly become switching it off everywhere.
+MFA_REQUIRED_ROLES = ()
+MFA_REQUIRED_FOR_ALL = False

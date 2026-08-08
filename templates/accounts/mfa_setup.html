@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load utc_tags %}
+{% block title %}Second factor{% endblock %}
+{% block content %}
+<h1 class="h3">Second factor</h1>
+
+{% if enrolled %}
+  <p class="text-body-secondary">
+    This account is protected by a second factor.
+    {% if status.confirmed_at %}Enrolled {{ status.confirmed_at|utc }}.{% endif %}
+    {% if status.last_used_at %}Last used {{ status.last_used_at|utc }}.{% endif %}
+  </p>
+  <p>
+    <strong>{{ status.recovery_codes_left }}</strong> recovery code{{ status.recovery_codes_left|pluralize }}
+    remaining.
+  </p>
+  <form method="post" action="{% url 'accounts:mfa-recovery-codes' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-outline-secondary">
+      Issue a new set of recovery codes
+    </button>
+    <span class="form-text d-block mt-1">
+      The codes you have now stop working the moment new ones are issued.
+    </span>
+  </form>
+{% else %}
+  <p class="text-body-secondary">
+    Your account can change the inventory, the Beam engineering, users and scopes, so a
+    password on its own is not enough to sign in with it. Scan this once with an authenticator
+    application, then enter the code it shows.
+  </p>
+
+  {% if error %}
+    <div class="alert alert-danger" role="alert">{{ error }}</div>
+  {% endif %}
+
+  <div class="row g-4">
+    <div class="col-12 col-lg-5">
+      <div class="card"><div class="card-body">
+        {% comment %}
+        Rendered here, from the secret, and never sent anywhere. §19.4 forbids a CDN and a
+        hosted QR service would mean posting the second factor to a third party — which is
+        precisely the thing being protected.
+        {% endcomment %}
+        <div class="mb-3" role="img" aria-label="QR code for enrolling this account">
+          {{ enrolment.qr_svg|safe }}
+        </div>
+        <p class="small text-body-secondary mb-1">
+          Cannot scan it? Enter this key by hand instead:
+        </p>
+        <p class="font-monospace small text-break mb-0">{{ enrolment.secret }}</p>
+      </div></div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label" for="code">The code your app shows</label>
+          <input class="form-control form-control-lg" type="text" name="code" id="code"
+                 inputmode="numeric" autocomplete="one-time-code" required
+                 aria-describedby="code-help">
+          <div class="form-text" id="code-help">
+            Six digits. If it is refused, check that your device's clock is correct — that is
+            almost always what is wrong.
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Confirm</button>
+      </form>
+
+      <p class="small text-body-secondary mt-4">
+        Nothing changes until you confirm. Until then this account still signs in with a
+        password alone, and you will be asked to finish this the next time you open a page.
+      </p>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}
