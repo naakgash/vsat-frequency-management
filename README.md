@@ -6,7 +6,7 @@ Replaces spreadsheet-based frequency planning with a controlled multi-user appli
 the hierarchy `Satellite → Beam → Satnet → Satnet Path`, with derived engineering values, guided
 operator workflows, and overlap prevention enforced at the UI, service and PostgreSQL layers.
 
-**Status:** Slices **S1–S17** delivered, plus the lettered schema slices S0, S9a, S10a and S11a.
+**Status:** Slices **S1–S18** delivered — the plan is complete, plus the lettered schema slices S0, S9a, S10a and S11a.
 The application foundation, PostgreSQL 16 with the required extensions, health endpoints, the
 English interface shell and CI guard rails; authentication with four roles behind a single backend
 authorization choke point and an append-only audit trail; the admin-managed Specification
@@ -19,8 +19,14 @@ approvals and on-air revisions; the table, saved views and dashboard; and both h
 platform's own shape — the normalized export and the two-stage import; the audit trail given a
 screen; and the production posture of §21 and §22 — a stack where only 443 is reachable, a second
 factor on administrator accounts, and **backups verified by a restore drill the test suite runs**.
-The pilot and cutover of Phase 9 are what remain; see the
-[slice plan](docs/design/05-vertical-slice-plan.md).
+
+**Every §26 acceptance criterion is reported with evidence in the
+[acceptance checklist](docs/acceptance-checklist.md), and none of them fails for want of code.**
+Fifteen are fully met; three are met in code but unproven against a real transponder (**OQ-22**);
+one is partial pending the incumbent workbook (**OQ-18**); and §26.20's discipline held — no RF
+value was invented anywhere — while its *gate* stays open on nine outstanding engineering values.
+`manage.py acceptance_gate` reads those out of the register and refuses, which is the correct
+answer until they arrive.
 
 The inventory ships **empty** — no satellite, band, window, translation, polarization mapping or
 guard value. Every value it would hold is an unresolved RF engineering question, and a
@@ -60,6 +66,7 @@ make run
 | `make backup` | Dump the database with a manifest beside it (§22.4) |
 | `make verify-restore DUMP=…` | Restore into a scratch database and prove it is usable (§22.4) |
 | `make smoke` | Verify a deployment is serving (§22.3) |
+| `manage.py acceptance_gate` | May this platform become the source of truth? (§26.20) |
 | `manage.py seed_demo` | Create the four demo accounts (local development only) |
 | `manage.py check_specifications` | Report dictionary entries still awaiting engineering input |
 | `make help` | All targets |
@@ -115,6 +122,7 @@ exist in SQLite, so a green SQLite suite would prove nothing about the behaviour
 | S15 — Import: dry-run and commit | [docs/slices/15-import-dry-run-and-commit.md](docs/slices/15-import-dry-run-and-commit.md) | §26.19 met for the import; §26.16 held from a new angle; SHA-256 verified between the two stages; free-capacity rows ignored, never imported |
 | S16 — Audit UI | [docs/slices/16-audit-ui.md](docs/slices/16-audit-ui.md) | §26.17 met; search by actor, object, period, request and import batch; field-level differences; no write route exists |
 | S17 — Production hardening, backup and restore | [docs/slices/17-production-hardening-backup-restore.md](docs/slices/17-production-hardening-backup-restore.md) | §26.18, §26.19 met; the §22.4 restore drill is executed by the suite; a second factor on administrator accounts; §22.2's posture asserted by tests |
+| S18 — Pilot, cutover and final acceptance | [docs/slices/18-pilot-cutover-and-acceptance.md](docs/slices/18-pilot-cutover-and-acceptance.md) | The [acceptance checklist](docs/acceptance-checklist.md), machine-verified; §26.20's gate made measurable; the pilot itself reported blocked on OQ-18 and the nine RF values |
 
 Slices are listed in the order they were delivered, which is not always numerical: S0 was
 written once there was a schema to generate intake sheets from, and the lettered slices are
