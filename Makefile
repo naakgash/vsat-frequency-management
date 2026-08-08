@@ -37,7 +37,23 @@ up:  ## Start everything: database, migrations, demo accounts, health check
 	# soon as they are *started*, and the migrate below races the application's own
 	# boot — which fails with "init process is not running" if the container exited,
 	# a message that says nothing about why.
-	docker compose up --build -d --wait
+	#
+	# --renew-anon-volumes is not optional, and the reason is subtle enough to be worth
+	# the line. compose.yaml bind-mounts the working tree over /app and keeps /app/.venv
+	# as an *anonymous volume*, so the bind mount does not hide the image's virtual
+	# environment. Anonymous volumes outlive `up`, so after a dependency is added the
+	# image contains the new package and the container still mounts the old venv over
+	# it — and the application dies at boot with a ModuleNotFoundError for something
+	# that is plainly in the lock file. Renewing the volume costs a copy from the image
+	# and makes the venv always match the image it came from.
+	#
+	# The named `postgres_data` volume is untouched by this: the database survives.
+	#
+	# On failure, show the container's own log. `--wait` reports only "exited (1)",
+	# which is the least useful sentence in the output and the one people see.
+	docker compose up --build -d --wait --renew-anon-volumes \
+		|| { echo; echo "The stack did not come up. The application container said:"; \
+		     docker compose logs --tail=40 web; exit 1; }
 	docker compose exec -T web python manage.py migrate --noinput
 	docker compose exec -T web python manage.py seed_demo
 	@$(MAKE) --no-print-directory health

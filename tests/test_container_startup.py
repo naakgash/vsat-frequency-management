@@ -184,3 +184,49 @@ def test_postgres_is_published_only_on_the_loopback_interface(compose_config):
     """Section 22.2. A bare "5432:5432" binds every interface on the host."""
     for port in compose_config["services"]["db"]["ports"]:
         assert str(port).startswith("127.0.0.1:"), port
+
+
+def test_the_venv_is_an_anonymous_volume_over_the_bind_mount(compose_config):
+    """The working tree is mounted over /app, so the image's venv needs protecting.
+
+    Without the second entry the bind mount hides `/app/.venv` entirely and the container
+    has no interpreter environment at all. With it, the venv survives — and acquires the
+    lifetime problem the next test is about.
+    """
+    mounts = compose_config["services"]["web"]["volumes"]
+
+    assert ".:/app" in mounts
+    assert "/app/.venv" in mounts
+
+
+def test_make_up_renews_anonymous_volumes():
+    """The pairing that stops a stale venv shadowing a rebuilt image.
+
+    An anonymous volume outlives `docker compose up`. So after a dependency is added, the
+    rebuilt image contains the new package and the container mounts the *previous* venv
+    over it — and the application dies at boot with a ModuleNotFoundError naming something
+    that is plainly in the lock file, on a machine where the build just succeeded.
+
+    That is not hypothetical: it happened when S17 added `pyotp` and `qrcode` to a stack
+    that had been running since before them. `--renew-anon-volumes` costs a copy from the
+    image and makes the venv always match the image it came from; the named
+    `postgres_data` volume is unaffected, so the database survives.
+
+    Asserted here rather than trusted because the flag looks removable — it is only
+    necessary because of the mount in the test above, and the two are twenty lines apart
+    in different files.
+
+    **Comment lines are stripped before the assertion**, and that is not fussiness: the
+    first version of this test matched the word in the explanatory comment directly above
+    the command, so deleting the flag from the recipe left it passing. A guard rail that
+    reads the documentation instead of the instruction guards nothing.
+    """
+    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    up_target = makefile.split("\nup:")[1].split("\n.PHONY")[0]
+    recipe = "\n".join(line for line in up_target.splitlines() if not line.strip().startswith("#"))
+
+    assert "--renew-anon-volumes" in recipe, (
+        "`make up` does not renew anonymous volumes. compose.yaml keeps /app/.venv as one, "
+        "so without this a rebuilt image is shadowed by the venv from the previous run and "
+        "the container exits at boot with a ModuleNotFoundError."
+    )
